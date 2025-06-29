@@ -12,6 +12,8 @@ import axios from 'axios';
 import FormData from 'form-data';
 import qrcode from 'qrcode-terminal';
 import vision from '@google-cloud/vision';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const require = createRequire(import.meta.url);
 const baileys = require('@whiskeysockets/baileys');
@@ -20,15 +22,18 @@ const { useMultiFileAuthState, DisconnectReason, makeWASocket, downloadMediaMess
 // إعداد البيئة
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sessionFolder = path.join(__dirname, 'image-auth');
+const sessionFolder = path.join(__dirname, 'baileys-auth');
 const uploadFolder = path.join(__dirname, 'whatsappuploads');
 fs.mkdirSync(uploadFolder, { recursive: true });
-
-// تهيئة مفتاح Google Vision قبل استدعاء الكائن
-process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'gcp-vision-key.json');
+fs.mkdirSync(sessionFolder, { recursive: true });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const visionClient = new vision.ImageAnnotatorClient();
+
+// تهيئة Google Vision باستخدام JSON من البيئة
+const visionClient = new vision.ImageAnnotatorClient({
+  credentials: JSON.parse(process.env.GOOGLE_CREDENTIAL_JSON)
+});
+
 const { state, saveCreds } = await useMultiFileAuthState(sessionFolder);
 const sessions = {};
 
@@ -38,10 +43,7 @@ const extractTextFromImage = async (imagePath) => {
 };
 
 const formatPrompt = (rawText) => {
-  return `
-النص:
-${rawText}
-`;
+  return `النص:\n${rawText}`;
 };
 
 const startBot = async () => {
@@ -50,7 +52,7 @@ const startBot = async () => {
     logger: P({ level: 'silent' }),
   });
 
-  console.log('🚀 بدأ تشغيل البوت...');
+  console.log('🚀 بدء تشغيل البوت...');
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
@@ -72,9 +74,8 @@ const startBot = async () => {
   });
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
-    
     if (!messages || !messages[0]) return;
-        const msg = messages[0];
+    const msg = messages[0];
     if (!msg.message || msg.key.fromMe) return;
 
     let content = msg.message;
@@ -82,29 +83,27 @@ const startBot = async () => {
       content = content.ephemeralMessage.message;
     }
 
-
     const sender = msg.key.remoteJid;
     const allowedGroup = '120363408270173007@g.us';
     if (sender !== allowedGroup) return;
+
     if (!sessions[sender]) {
       const context = await setupGroupContext(sender);
       sessions[sender] = { ...context };
     }
 
     const { threadId, assistantId } = sessions[sender];
-    // قبل إرسال أي رسالة جديدة إلى threadId
-const existingRuns = await openai.beta.threads.runs.list(threadId);
-const isActiveRun = existingRuns.data.some(run => ['queued', 'in_progress'].includes(run.status));
+    const existingRuns = await openai.beta.threads.runs.list(threadId);
+    const isActiveRun = existingRuns.data.some(run => ['queued', 'in_progress'].includes(run.status));
 
-if (isActiveRun) {
-  await sock.sendMessage(sender, { text: '⚠️ لا يمكن إرسال صورة جديدة الآن، يرجى الانتظار حتى انتهاء المعالجة الحالية.' });
-  return;
-}
+    if (isActiveRun) {
+      await sock.sendMessage(sender, { text: '⚠️ لا يمكن إرسال صورة جديدة الآن، يرجى الانتظار حتى انتهاء المعالجة الحالية.' });
+      return;
+    }
 
     try {
       const mediaMsg = content?.imageMessage || content?.documentMessage;
-const text = content?.conversation || content?.extendedTextMessage?.text;
-
+      const text = content?.conversation || content?.extendedTextMessage?.text;
 
       if (mediaMsg) {
         const buffer = await downloadMediaMessage(msg, 'buffer', {}, {
@@ -159,7 +158,7 @@ const text = content?.conversation || content?.extendedTextMessage?.text;
       await sock.sendMessage(sender, { text: result });
 
     } catch (err) {
-      console.error('❌ خطأ:', err);
+      console.error('❌ خطأ أثناء المعالجة:', err);
       await sock.sendMessage(sender, { text: '❌ حدث خطأ أثناء المعالجة.' });
     }
   });
