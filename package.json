@@ -6,16 +6,18 @@
   "scripts": {
     "start": "node image-handler.mjs"
   },
-  "dependencies": {
-    "@google-cloud/vision": "^2.4.0",
+   "dependencies": {
+    "@google-cloud/vision": "^5.2.0",
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.6.8",
     "dotenv": "^16.5.0",
-    "form-data": "^4.0.0",
-    "mime-types": "^2.1.35",
+    "jimp": "^0.16.13",
     "openai": "^4.104.0",
     "pino": "^9.7.0",
-    "qrcode-terminal": "^0.12.0"
+    "qrcode-terminal": "^0.12.0",
+    "tesseract.js": "^6.0.1",
+    "venom-bot": "^5.0.1"
   }
 }
+
