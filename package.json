@@ -7,7 +7,7 @@
     "start": "node image-handler.mjs"
   },
   "dependencies": {
-    "@google-cloud/vision": "^5.3.0",
+    "@google-cloud/vision": "^3.2.0",
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.6.0",
     "axios": "^1.6.7",
