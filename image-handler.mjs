@@ -22,7 +22,7 @@ const { useMultiFileAuthState, DisconnectReason, makeWASocket, downloadMediaMess
 // إعداد البيئة
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sessionFolder = path.join(__dirname, 'baileys-auth');
+const sessionFolder = path.join(__dirname, 'image-auth');
 const uploadFolder = path.join(__dirname, 'whatsappuploads');
 fs.mkdirSync(uploadFolder, { recursive: true });
 fs.mkdirSync(sessionFolder, { recursive: true });
