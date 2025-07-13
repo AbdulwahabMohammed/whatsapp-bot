@@ -40,8 +40,14 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
-  await openai.beta.assistants.files.create(org.assistant_id, {
-    file_id: file.id,
+  // Retrieve existing file IDs attached to this assistant, then append the new
+  // file ID and update the assistant. This uses the supported API for
+  // OpenAI SDK v5.9.0 and later.
+  const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
+  const existingFileIds = assistant.file_ids || [];
+
+  await openai.beta.assistants.update(org.assistant_id, {
+    file_ids: [...existingFileIds, file.id],
   });
 
   await pool.query(
