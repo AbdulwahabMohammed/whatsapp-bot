@@ -40,7 +40,16 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
-  await openai.beta.assistants.files.create(org.assistant_id, { file_id: file.id });
+  if (openai.beta.assistants.files?.create) {
+    await openai.beta.assistants.files.create(org.assistant_id, { file_id: file.id });
+  } else {
+    // Fallback for older OpenAI SDK versions that lack assistants.files API
+    const current = await openai.beta.assistants.retrieve(org.assistant_id);
+    const fileIds = current.file_ids || [];
+    await openai.beta.assistants.update(org.assistant_id, {
+      file_ids: [...fileIds, file.id],
+    });
+  }
 
   await pool.query(
     'INSERT INTO documents (organization_id, file_id, file_name) VALUES ($1, $2, $3)',

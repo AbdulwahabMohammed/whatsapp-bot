@@ -4,26 +4,27 @@ This project is a starting point for building a WhatsApp customer service bot po
 
 ## Setup
 1. Copy `.env.example` to `.env` and fill in your OpenAI and PostgreSQL credentials.
-2. Initialize the database tables:
+2. Install the project dependencies:
+   ```bash
+   npm install
+   ```
+3. Initialize the database tables:
    ```bash
    node src/initDb.js
    ```
-3. Run the sample script:
+4. Run the sample script:
    ```bash
    npm start
    ```
-
-4. To create an OpenAI assistant for an organization:
+5. To create an OpenAI assistant for an organization:
    ```bash
    node src/scripts/createAssistant.js <organizationId>
    ```
-
-5. To upload a reference file to an organization's assistant:
+6. To upload a reference file to an organization's assistant:
    ```bash
    node src/scripts/uploadFile.js <organizationId> <path/to/file>
    ```
-
-6. Start the WhatsApp bot for an organization (requires `ORGANIZATION_ID` in the `.env` file):
+7. Start the WhatsApp bot for an organization (requires `ORGANIZATION_ID` in the `.env` file):
    ```bash
    npm run whatsapp
    ```
