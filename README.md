@@ -23,6 +23,12 @@ This project is a starting point for building a WhatsApp customer service bot po
    node src/scripts/uploadFile.js <organizationId> <path/to/file>
    ```
 
+6. Start the WhatsApp bot for an organization (requires `ORGANIZATION_ID` in the `.env` file):
+   ```bash
+   npm run whatsapp
+   ```
+   The first run will display a QR code in the console which must be scanned with the WhatsApp account for that organization.
+
 The project includes utilities to create an OpenAI assistant for each organization and upload reference files.
 
 ## Scripts
@@ -31,5 +37,7 @@ The project includes utilities to create an OpenAI assistant for each organizati
 - `src/assistant.js` – Functions to create an assistant and upload files.
 - `src/scripts/createAssistant.js` – CLI to create an assistant for an organization.
 - `src/scripts/uploadFile.js` – CLI to upload a reference file for an organization.
+- `src/whatsappBot.js` – Connects to WhatsApp using Baileys and routes incoming
+  messages through the organization's assistant.
 
 This is only the foundation; further steps include integrating a WhatsApp client and managing chat sessions.
