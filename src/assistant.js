@@ -10,7 +10,9 @@ async function createAssistant(organizationId) {
   const assistant = await openai.beta.assistants.create({
     name: `Org-${organizationId}-Assistant`,
     instructions: 'رد فقط باستخدام البيانات المقدمة من الملفات المرجعية الخاصة بالمنشأة.',
-    tools: [{ type: 'retrieval' }],
+    // Use file_search tool to allow the assistant to access uploaded reference
+    // documents for this organization.
+    tools: [{ type: 'file_search' }],
     model: 'gpt-4o',
   });
 
