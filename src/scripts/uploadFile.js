@@ -25,15 +25,14 @@ async function main() {
     purpose: 'assistants',
   });
 
-  if (openai.beta.assistants.files?.create) {
-    await openai.beta.assistants.files.create(org.assistant_id, { file_id: file.id });
-  } else {
-    const current = await openai.beta.assistants.retrieve(org.assistant_id);
-    const fileIds = current.file_ids || [];
-    await openai.beta.assistants.update(org.assistant_id, {
-      file_ids: [...fileIds, file.id],
-    });
-  }
+  const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
+  const existingFileIds = assistant.tool_resources?.file_ids || [];
+
+  await openai.beta.assistants.update(org.assistant_id, {
+    tool_resources: {
+      file_ids: [...existingFileIds, file.id],
+    },
+  });
 
   await pool.query(
     'INSERT INTO documents (organization_id, file_id, file_name) VALUES ($1, $2, $3)',
