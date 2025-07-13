@@ -40,13 +40,8 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
-  const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
-  const existingFileIds = assistant.tool_resources?.file_ids || [];
-
-  await openai.beta.assistants.update(org.assistant_id, {
-    tool_resources: {
-      file_ids: [...existingFileIds, file.id],
-    },
+  await openai.beta.assistants.files.create(org.assistant_id, {
+    file_id: file.id,
   });
 
   await pool.query(
