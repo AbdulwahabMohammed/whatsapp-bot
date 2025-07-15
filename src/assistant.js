@@ -40,12 +40,16 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
-  // Determine which vectorStores API is available in this SDK version.
+  // Determine which vector store API is available in this SDK version.
   const vectorStoresApi =
-    (openai.beta && (openai.beta.vectorStores || openai.beta.vector_stores)) ||
-    null;
+    openai.beta?.vectorStores ||
+    openai.beta?.vector_stores ||
+    openai.vectorStores ||
+    openai.vector_stores;
   if (!vectorStoresApi) {
-    throw new Error('This version of the OpenAI SDK does not support vector stores');
+    throw new Error(
+      'This OpenAI SDK does not expose the vector store API. Please upgrade to a recent version.'
+    );
   }
 
   // Determine the vector store for this organization.

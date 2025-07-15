@@ -1,6 +1,16 @@
-// Use the default export so beta features like vector stores are available
-// in all supported versions of the OpenAI SDK.
-const OpenAI = require('openai').default;
+// Some versions of the OpenAI SDK expose the client as the default export
+// while others provide a named `OpenAI` export.  Try both so the project works
+// across versions.
+let OpenAI;
+try {
+  // Prefer the default export for newer SDKs
+  OpenAI = require('openai').default;
+  if (!OpenAI) {
+    ({ OpenAI } = require('openai'));
+  }
+} catch (err) {
+  ({ OpenAI } = require('openai'));
+}
 const dotenv = require('dotenv');
 
 dotenv.config();
