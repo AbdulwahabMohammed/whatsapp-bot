@@ -19,12 +19,22 @@ async function getOrCreateConversation(orgId, customerPhone) {
 async function sendMessage(orgId, assistantId, customerPhone, text) {
   const conv = await getOrCreateConversation(orgId, customerPhone);
 
-  await openai.beta.threads.messages.create(conv.thread_id, {
+  // In rare cases the conversation may exist without a thread_id because of
+  // earlier failures. Ensure there is always a valid thread attached before
+  // continuing.
+  let threadId = conv.thread_id;
+  if (!threadId) {
+    const thread = await openai.beta.threads.create();
+    threadId = thread.id;
+    await pool.query('UPDATE conversations SET thread_id=$1 WHERE id=$2', [threadId, conv.id]);
+  }
+
+  await openai.beta.threads.messages.create(threadId, {
     role: 'user',
     content: text,
   });
 
-  const run = await openai.beta.threads.runs.create(conv.thread_id, {
+  const run = await openai.beta.threads.runs.create(threadId, {
     assistant_id: assistantId,
   });
 
@@ -34,11 +44,18 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
       throw new Error('Run ' + run.id + ' failed with status ' + status);
     }
     await new Promise(r => setTimeout(r, 1000));
-    const current = await openai.beta.threads.runs.retrieve(conv.thread_id, run.id);
+    let current;
+    try {
+      // Most SDK versions expect both the thread ID and the run ID.
+      current = await openai.beta.threads.runs.retrieve(threadId, run.id);
+    } catch (err) {
+      // Some newer SDKs accept only the run ID.
+      current = await openai.beta.threads.runs.retrieve(run.id);
+    }
     status = current.status;
   }
 
-  const messages = await openai.beta.threads.messages.list(conv.thread_id, { limit: 1 });
+  const messages = await openai.beta.threads.messages.list(threadId, { limit: 1 });
   const reply = messages.data[0].content[0].text.value;
   return reply;
 }

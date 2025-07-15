@@ -35,7 +35,7 @@ This project is a starting point for building a WhatsApp customer service bot po
    ```bash
    npm run whatsapp
    ```
-   The first run will display a QR code in the console which must be scanned with the WhatsApp account for that organization.
+   The first run will display a QR code in the console. Scan this code with the WhatsApp account for that organization to link the bot. The QR is printed using `qrcode-terminal` and will appear again if the session expires.
 
 The project includes utilities to create an OpenAI assistant for each organization and manage its vector store for reference files.
 
