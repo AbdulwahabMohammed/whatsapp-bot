@@ -23,8 +23,10 @@ This project is a starting point for building a WhatsApp customer service bot po
    node src/scripts/createAssistant.js <organizationId>
    ```
 
-6. To upload a reference file to an organization's assistant. The script creates
-   a vector store if needed and attaches the file so it can be searched by GPT-4o:
+6. To upload a reference file to an organization's assistant. The script checks
+   whether the organization already has a vector store. If not, a new one is
+   created, stored in the database, and linked to the assistant. The file is then
+   indexed using a file batch so GPT-4o can search it:
    ```bash
    node src/scripts/uploadFile.js <organizationId> <path/to/file>
    ```
@@ -37,8 +39,9 @@ This project is a starting point for building a WhatsApp customer service bot po
 
 The project includes utilities to create an OpenAI assistant for each organization and manage its vector store for reference files.
 
-## Scripts
-- `src/initDb.js` – Creates the required tables.
+-## Scripts
+- `src/initDb.js` – Creates the required tables. Organizations now store their
+  vector store ID in the `vector_store_id` column.
 - `src/index.js` – Simple example to insert and list organizations.
 - `src/assistant.js` – Functions to create an assistant and manage vector stores.
 - `src/scripts/createAssistant.js` – CLI to create an assistant for an organization.

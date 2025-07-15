@@ -11,7 +11,7 @@ async function main() {
     process.exit(1);
   }
 
-  const orgRes = await pool.query('SELECT assistant_id FROM organizations WHERE id=$1', [orgId]);
+  const orgRes = await pool.query('SELECT assistant_id, vector_store_id FROM organizations WHERE id=$1', [orgId]);
   const org = orgRes.rows[0];
   if (!org) {
     throw new Error('Organization not found');
@@ -26,21 +26,25 @@ async function main() {
   });
 
   const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
-  let vectorStoreId =
-    assistant.tool_resources?.file_search?.vector_store_ids?.[0] || null;
+  let vectorStoreId = org.vector_store_id;
+  const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
   if (!vectorStoreId) {
     const vectorStore = await openai.beta.vectorStores.create({
       name: `org-${orgId}-store`,
     });
     vectorStoreId = vectorStore.id;
+    await pool.query('UPDATE organizations SET vector_store_id=$1 WHERE id=$2', [vectorStoreId, orgId]);
+  }
+
+  if (!attachedStores.includes(vectorStoreId)) {
     await openai.beta.assistants.update(org.assistant_id, {
-      tool_resources: { file_search: { vector_store_ids: [vectorStoreId] } },
+      tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } },
     });
   }
 
-  await openai.beta.vectorStores.files.create(vectorStoreId, {
-    file_id: file.id,
+  await openai.beta.vectorStores.fileBatches.createAndPoll(vectorStoreId, {
+    file_ids: [file.id],
   });
 
   await pool.query(

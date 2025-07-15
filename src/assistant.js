@@ -26,7 +26,7 @@ async function createAssistant(organizationId) {
  * Upload a file and attach it to the organization assistant.
  */
 async function uploadFile(organizationId, filePath) {
-  const orgRes = await pool.query('SELECT assistant_id FROM organizations WHERE id=$1', [organizationId]);
+  const orgRes = await pool.query('SELECT assistant_id, vector_store_id FROM organizations WHERE id=$1', [organizationId]);
   const org = orgRes.rows[0];
   if (!org) {
     throw new Error('Organization not found');
@@ -40,25 +40,28 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
-  // Use vector stores for retrieval. Check if the assistant already has a
-  // vector store attached and create one if not.
+  // Determine the vector store for this organization.
+  let vectorStoreId = org.vector_store_id;
   const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
-  let vectorStoreId =
-    assistant.tool_resources?.file_search?.vector_store_ids?.[0] || null;
+  const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
   if (!vectorStoreId) {
     const vectorStore = await openai.beta.vectorStores.create({
       name: `org-${organizationId}-store`,
     });
     vectorStoreId = vectorStore.id;
+    await pool.query('UPDATE organizations SET vector_store_id=$1 WHERE id=$2', [vectorStoreId, organizationId]);
+  }
+
+  if (!attachedStores.includes(vectorStoreId)) {
     await openai.beta.assistants.update(org.assistant_id, {
-      tool_resources: { file_search: { vector_store_ids: [vectorStoreId] } },
+      tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } },
     });
   }
 
-  // Attach the uploaded file to the vector store so the assistant can search it
-  await openai.beta.vectorStores.files.create(vectorStoreId, {
-    file_id: file.id,
+  // Upload the file to the vector store and wait for indexing
+  await openai.beta.vectorStores.fileBatches.createAndPoll(vectorStoreId, {
+    file_ids: [file.id],
   });
 
   await pool.query(
