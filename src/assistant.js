@@ -40,14 +40,25 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
-  // Retrieve existing file IDs attached to this assistant, then append the new
-  // file ID and update the assistant. This uses the supported API for
-  // OpenAI SDK v5.9.0 and later.
+  // Use vector stores for retrieval. Check if the assistant already has a
+  // vector store attached and create one if not.
   const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
-  const existingFileIds = assistant.file_ids || [];
+  let vectorStoreId =
+    assistant.tool_resources?.file_search?.vector_store_ids?.[0] || null;
 
-  await openai.beta.assistants.update(org.assistant_id, {
-    file_ids: [...existingFileIds, file.id],
+  if (!vectorStoreId) {
+    const vectorStore = await openai.beta.vectorStores.create({
+      name: `org-${organizationId}-store`,
+    });
+    vectorStoreId = vectorStore.id;
+    await openai.beta.assistants.update(org.assistant_id, {
+      tool_resources: { file_search: { vector_store_ids: [vectorStoreId] } },
+    });
+  }
+
+  // Attach the uploaded file to the vector store so the assistant can search it
+  await openai.beta.vectorStores.files.create(vectorStoreId, {
+    file_id: file.id,
   });
 
   await pool.query(

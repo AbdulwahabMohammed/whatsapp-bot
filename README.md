@@ -21,7 +21,8 @@ This project is a starting point for building a WhatsApp customer service bot po
    node src/scripts/createAssistant.js <organizationId>
    ```
 
-6. To upload a reference file to an organization's assistant (the file will be uploaded and attached automatically):
+6. To upload a reference file to an organization's assistant. The script creates
+   a vector store if needed and attaches the file so it can be searched by GPT-4o:
    ```bash
    node src/scripts/uploadFile.js <organizationId> <path/to/file>
    ```
@@ -32,14 +33,14 @@ This project is a starting point for building a WhatsApp customer service bot po
    ```
    The first run will display a QR code in the console which must be scanned with the WhatsApp account for that organization.
 
-The project includes utilities to create an OpenAI assistant for each organization and upload reference files.
+The project includes utilities to create an OpenAI assistant for each organization and manage its vector store for reference files.
 
 ## Scripts
 - `src/initDb.js` – Creates the required tables.
 - `src/index.js` – Simple example to insert and list organizations.
-- `src/assistant.js` – Functions to create an assistant and upload files.
+- `src/assistant.js` – Functions to create an assistant and manage vector stores.
 - `src/scripts/createAssistant.js` – CLI to create an assistant for an organization.
-- `src/scripts/uploadFile.js` – CLI to upload and attach a reference file for an organization.
+- `src/scripts/uploadFile.js` – CLI to upload a reference file and add it to the organization's vector store.
 - `src/whatsappBot.js` – Connects to WhatsApp using Baileys and routes incoming
   messages through the organization's assistant.
 
