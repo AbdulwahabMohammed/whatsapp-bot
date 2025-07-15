@@ -1,5 +1,6 @@
-const OpenAIImport = require('openai');
-const OpenAI = OpenAIImport.default || OpenAIImport;
+// Use the default export so beta features like vector stores are available
+// in all supported versions of the OpenAI SDK.
+const OpenAI = require('openai').default;
 const dotenv = require('dotenv');
 
 dotenv.config();

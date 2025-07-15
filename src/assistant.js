@@ -40,13 +40,21 @@ async function uploadFile(organizationId, filePath) {
     purpose: 'assistants',
   });
 
+  // Determine which vectorStores API is available in this SDK version.
+  const vectorStoresApi =
+    (openai.beta && (openai.beta.vectorStores || openai.beta.vector_stores)) ||
+    null;
+  if (!vectorStoresApi) {
+    throw new Error('This version of the OpenAI SDK does not support vector stores');
+  }
+
   // Determine the vector store for this organization.
   let vectorStoreId = org.vector_store_id;
   const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
   const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
   if (!vectorStoreId) {
-    const vectorStore = await openai.beta.vectorStores.create({
+    const vectorStore = await vectorStoresApi.create({
       name: `org-${organizationId}-store`,
     });
     vectorStoreId = vectorStore.id;
@@ -60,7 +68,7 @@ async function uploadFile(organizationId, filePath) {
   }
 
   // Upload the file to the vector store and wait for indexing
-  await openai.beta.vectorStores.fileBatches.createAndPoll(vectorStoreId, {
+  await vectorStoresApi.fileBatches.createAndPoll(vectorStoreId, {
     file_ids: [file.id],
   });
 

@@ -25,12 +25,19 @@ async function main() {
     purpose: 'assistants',
   });
 
+  const vectorStoresApi =
+    (openai.beta && (openai.beta.vectorStores || openai.beta.vector_stores)) ||
+    null;
+  if (!vectorStoresApi) {
+    throw new Error('This version of the OpenAI SDK does not support vector stores');
+  }
+
   const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
   let vectorStoreId = org.vector_store_id;
   const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
   if (!vectorStoreId) {
-    const vectorStore = await openai.beta.vectorStores.create({
+    const vectorStore = await vectorStoresApi.create({
       name: `org-${orgId}-store`,
     });
     vectorStoreId = vectorStore.id;
@@ -43,7 +50,7 @@ async function main() {
     });
   }
 
-  await openai.beta.vectorStores.fileBatches.createAndPoll(vectorStoreId, {
+  await vectorStoresApi.fileBatches.createAndPoll(vectorStoreId, {
     file_ids: [file.id],
   });
 
