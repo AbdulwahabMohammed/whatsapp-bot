@@ -1,4 +1,5 @@
-const OpenAI = require('openai');
+const OpenAIImport = require('openai');
+const OpenAI = OpenAIImport.default || OpenAIImport;
 const dotenv = require('dotenv');
 
 dotenv.config();

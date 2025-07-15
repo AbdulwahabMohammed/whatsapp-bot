@@ -8,6 +8,8 @@ This project is a starting point for building a WhatsApp customer service bot po
    ```bash
    npm install
    ```
+   The OpenAI client is imported using `require('openai').default` so that beta
+   features like vector stores are available.
 3. Initialize the database tables:
    ```bash
    node src/initDb.js
