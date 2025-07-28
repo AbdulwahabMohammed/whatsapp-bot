@@ -15,7 +15,9 @@
   - qrcode-terminal
 
 ## خطوات التثبيت والتشغيل
-1. نسخ الملف `.env.example` إلى `.env` وتعبئة مفاتيح OpenAI وبيانات PostgreSQL.
+1. نسخ الملف `.env.example` إلى `.env` وتعبئة مفاتيح OpenAI وبيانات PostgreSQL،
+   مع تحديد متغيرات `ADMIN_PASSWORD` و`ADMIN_PORT` للوحة الإدارة، ويمكن ضبط
+   `LOG_LEVEL` لتغيير مستوى السجلات.
 2. تثبيت الاعتمادات:
    ```bash
    npm install
