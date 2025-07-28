@@ -1,4 +1,5 @@
 const pool = require('./db');
+const logger = require('./logger');
 
 async function init() {
   await pool.query(`
@@ -37,11 +38,11 @@ async function init() {
     );
   `);
 
-  console.log('Database initialized');
+  logger.info('Database initialized');
   process.exit();
 }
 
 init().catch(err => {
-  console.error('Failed to initialize DB:', err);
+  logger.error('Failed to initialize DB:', err);
   process.exit(1);
 });
