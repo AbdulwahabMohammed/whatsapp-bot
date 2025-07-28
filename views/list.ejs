@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Organizations</title>
+</head>
+<body>
+<h1>Organizations</h1>
+<a href="/org/new">Add Organization</a>
+<ul>
+<% orgs.forEach(function(o){ %>
+  <li>
+    <%= o.name %> (<%= o.phone %>)
+    <form action="/org/<%= o.id %>/assistant" method="post" style="display:inline;">
+      <button type="submit">Create Assistant</button>
+    </form>
+    <a href="/org/<%= o.id %>/upload">Upload File</a>
+  </li>
+<% }); %>
+</ul>
+</body>
+</html>

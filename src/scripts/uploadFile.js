@@ -4,12 +4,9 @@ const openai = require('../openai');
 const pool = require('../db');
 const logger = require('../logger');
 
-async function main() {
-  const orgId = process.argv[2];
-  const filePath = process.argv[3];
+async function upload(orgId, filePath) {
   if (!orgId || !filePath) {
-    logger.error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
-    process.exit(1);
+    throw new Error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
   }
 
   const orgRes = await pool.query('SELECT assistant_id, vector_store_id FROM organizations WHERE id=$1', [orgId]);
@@ -67,7 +64,17 @@ async function main() {
   logger.info(`File uploaded and attached: ${file.id}`);
 }
 
-main().catch(err => {
-  logger.error('Failed to upload file:', err);
-  process.exit(1);
-});
+async function main() {
+  const orgId = process.argv[2];
+  const filePath = process.argv[3];
+  await upload(orgId, filePath);
+}
+
+if (require.main === module) {
+  main().catch(err => {
+    logger.error('Failed to upload file:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { upload };
