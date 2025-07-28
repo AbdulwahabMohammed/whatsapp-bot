@@ -10,18 +10,12 @@ const { sendMessage } = require('./chat');
 const logger = require('./logger');
 require('dotenv').config();
 
-async function start() {
-  const orgId = process.env.ORGANIZATION_ID;
-  if (!orgId) {
-    throw new Error('ORGANIZATION_ID not set in environment');
-  }
-  const { rows } = await pool.query('SELECT * FROM organizations WHERE id=$1', [orgId]);
-  const org = rows[0];
-  if (!org || !org.assistant_id) {
-    throw new Error('Organization or assistant not found');
+async function startForOrg(org) {
+  if (!org.assistant_id) {
+    throw new Error(`Organization ${org.id} does not have an assistant`);
   }
 
-  const { state, saveCreds } = await useMultiFileAuthState('auth');
+  const { state, saveCreds } = await useMultiFileAuthState(`auth-${org.id}`);
   const sock = makeWASocket({
     auth: state,
   });
@@ -37,7 +31,7 @@ async function start() {
       const shouldReconnect =
         (lastDisconnect?.error instanceof Boom ? lastDisconnect.error.output.statusCode : 0) !==
         DisconnectReason.loggedOut;
-      if (shouldReconnect) start();
+      if (shouldReconnect) startForOrg(org);
     } else if (connection === 'open') {
       logger.info('WhatsApp connection established');
     }
@@ -63,6 +57,18 @@ async function start() {
   });
 }
 
+async function start() {
+  const { rows } = await pool.query('SELECT * FROM organizations WHERE assistant_id IS NOT NULL');
+  if (rows.length === 0) {
+    throw new Error('No organizations with assistants found');
+  }
+  for (const org of rows) {
+    startForOrg(org).catch(err => {
+      logger.error(`WhatsApp bot error for org ${org.id}:`, err);
+    });
+  }
+}
+
 start().catch(err => {
-  logger.error('WhatsApp bot error:', err);
+  logger.error('Failed to start WhatsApp bots:', err);
 });
