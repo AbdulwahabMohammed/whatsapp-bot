@@ -1,52 +1,58 @@
-# WhatsApp AI Bot (Skeleton)
+# بوت واتساب الذكي
 
-This project is a starting point for building a WhatsApp customer service bot powered by OpenAI Assistants API.
+## مقدمة
+هذا المشروع يوفر هيكلًا لبناء بوت خدمة عملاء على واتساب معتمد على OpenAI Assistants API. يهدف البوت إلى إدارة المحادثات والرد على استفسارات العملاء اعتمادًا على الملفات المرجعية الخاصة بكل منشأة.
 
-## Setup
-1. Copy `.env.example` to `.env` and fill in your OpenAI and PostgreSQL credentials.
-2. Install the project dependencies (the project expects `openai@^5.9.0`):
+## المتطلبات
+- Node.js 18 أو أحدث
+- قاعدة بيانات PostgreSQL
+- الحزم التالية الموجودة في `package.json`:
+  - openai@^5.9.0
+  - pg
+  - dotenv
+  - @whiskeysockets/baileys
+  - @hapi/boom
+  - qrcode-terminal
+
+## خطوات التثبيت والتشغيل
+1. نسخ الملف `.env.example` إلى `.env` وتعبئة مفاتيح OpenAI وبيانات PostgreSQL.
+2. تثبيت الاعتمادات:
    ```bash
    npm install
    ```
-   The OpenAI client is imported using `require('openai').default` so that beta
-   features like vector stores are available.
-3. Initialize the database tables:
+3. تهيئة الجداول في قاعدة البيانات:
    ```bash
    node src/initDb.js
    ```
-4. Run the sample script:
+4. تشغيل المثال الأساسي:
    ```bash
    npm start
    ```
-5. To create an OpenAI assistant for an organization:
+5. إنشاء مساعد OpenAI لمنشأة معينة:
    ```bash
    node src/scripts/createAssistant.js <organizationId>
    ```
-
-6. To upload a reference file to an organization's assistant. The script checks
-   whether the organization already has a vector store. If not, a new one is
-   created, stored in the database, and linked to the assistant. The file is then
-   indexed using a file batch so GPT-4o can search it:
+6. رفع ملف مرجعي وربطه بالمساعد:
    ```bash
    node src/scripts/uploadFile.js <organizationId> <path/to/file>
    ```
-
-7. Start the WhatsApp bot for an organization (requires `ORGANIZATION_ID` in the `.env` file):
+7. تشغيل بوت واتساب (يتطلب متغير `ORGANIZATION_ID` في `.env`):
    ```bash
    npm run whatsapp
    ```
-   The first run will display a QR code in the console. Scan this code with the WhatsApp account for that organization to link the bot. The QR is printed using `qrcode-terminal` and will appear again if the session expires.
+   في أول تشغيل ستظهر صورة QR في الطرفية لربط حساب واتساب.
 
-The project includes utilities to create an OpenAI assistant for each organization and manage its vector store for reference files. Run polling in `chat.js` always uses the conversation's thread ID to avoid invalid path errors. If you run a very old OpenAI SDK, the helper will fall back to the positional `retrieve(threadId, runId)` signature automatically.
+## بنية المجلد `src/`
+- `db.js` – إعداد اتصال PostgreSQL.
+- `openai.js` – تهيئة عميل OpenAI ليعمل مع الإصدارات المختلفة.
+- `initDb.js` – إنشاء الجداول الرئيسية في قاعدة البيانات.
+- `assistant.js` – إنشاء المساعد وإدارة ملفات المرجع.
+- `chat.js` – إرسال الرسائل ومتابعة المحادثات داخل الخيوط.
+- `whatsappBot.js` – ربط البوت بتطبيق واتساب وتوجيه الرسائل.
+- `index.js` – مثال مبسط لإضافة المنشآت وعرضها.
+- المجلد `scripts/` يضم أوامر CLI مثل `createAssistant.js` و`uploadFile.js`.
 
--## Scripts
-- `src/initDb.js` – Creates the required tables. Organizations now store their
-  vector store ID in the `vector_store_id` column.
-- `src/index.js` – Simple example to insert and list organizations.
-- `src/assistant.js` – Functions to create an assistant and manage vector stores.
-- `src/scripts/createAssistant.js` – CLI to create an assistant for an organization.
-- `src/scripts/uploadFile.js` – CLI to upload a reference file and add it to the organization's vector store.
-- `src/whatsappBot.js` – Connects to WhatsApp using Baileys and routes incoming
-  messages through the organization's assistant.
-
-This is only the foundation; further steps include integrating a WhatsApp client and managing chat sessions.
+## التوثيق
+توجد ملفات تفصيلية إضافية داخل مجلد `docs/` مثل:
+- [docs/setup.md](docs/setup.md)
+- [docs/openai.md](docs/openai.md)
