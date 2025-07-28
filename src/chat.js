@@ -52,14 +52,20 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
   });
 
   let status = run.status;
+  const MAX_RETRIES = 60; // ~60 seconds with 1s interval
+  let attempts = 0;
   while (status !== 'completed') {
     if (['failed', 'cancelled'].includes(status)) {
       throw new Error('Run ' + run.id + ' failed with status ' + status);
+    }
+    if (attempts >= MAX_RETRIES) {
+      throw new Error('Run ' + run.id + ' did not complete within 60 seconds');
     }
     await new Promise(r => setTimeout(r, 1000));
 
     const current = await retrieveRun(threadId, run.id);
     status = current.status;
+    attempts++;
   }
 
   const messages = await openai.beta.threads.messages.list(threadId, { limit: 1 });
