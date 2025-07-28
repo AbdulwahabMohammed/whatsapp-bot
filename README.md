@@ -53,6 +53,6 @@
 - المجلد `scripts/` يضم أوامر CLI مثل `createAssistant.js` و`uploadFile.js`.
 
 ## التوثيق
-توجد ملفات تفصيلية إضافية داخل مجلد `docs/` مثل:
-- [docs/setup.md](docs/setup.md)
-- [docs/openai.md](docs/openai.md)
+يوفر المجلد `docs/` شروحات تفصيلية حول إعداد المشروع واستخدامه، ومنها:
+- [docs/setup.md](docs/setup.md) – خطوات الإعداد المحلي.
+- [docs/openai.md](docs/openai.md) – كيفية تهيئة عميل OpenAI وملاحظات الإصدارات.
