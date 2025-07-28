@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Upload File</title>
+</head>
+<body>
+<h1>Upload Reference File for Organization <%= orgId %></h1>
+<form action="/org/<%= orgId %>/upload" method="post">
+  <label>Path: <input type="text" name="filePath"/></label><br/>
+  <button type="submit">Upload</button>
+</form>
+</body>
+</html>

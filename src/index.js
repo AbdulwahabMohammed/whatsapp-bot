@@ -26,6 +26,10 @@ async function main() {
   logger.info('All organizations:', orgs);
 }
 
-main().catch(err => {
-  logger.error(err);
-});
+if (require.main === module) {
+  main().catch(err => {
+    logger.error(err);
+  });
+}
+
+module.exports = { createOrganization, listOrganizations };
