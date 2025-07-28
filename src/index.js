@@ -1,9 +1,8 @@
 const pool = require('./db');
-const openai = require('./openai');
 const logger = require('./logger');
 
 /**
- * Create an organization and optionally an assistant in OpenAI.
+ * Create an organization entry in the database.
  */
 async function createOrganization(name, phone) {
   const { rows } = await pool.query(
