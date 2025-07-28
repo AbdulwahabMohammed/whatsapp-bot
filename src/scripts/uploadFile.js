@@ -2,12 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const openai = require('../openai');
 const pool = require('../db');
+const logger = require('../logger');
 
 async function main() {
   const orgId = process.argv[2];
   const filePath = process.argv[3];
   if (!orgId || !filePath) {
-    console.error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
+    logger.error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
     process.exit(1);
   }
 
@@ -63,10 +64,10 @@ async function main() {
     [orgId, file.id, path.basename(filePath)]
   );
 
-  console.log('File uploaded and attached:', file.id);
+  logger.info(`File uploaded and attached: ${file.id}`);
 }
 
 main().catch(err => {
-  console.error('Failed to upload file:', err);
+  logger.error('Failed to upload file:', err);
   process.exit(1);
 });

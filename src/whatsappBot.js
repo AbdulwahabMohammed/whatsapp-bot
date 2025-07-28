@@ -7,6 +7,7 @@ const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
 const pool = require('./db');
 const { sendMessage } = require('./chat');
+const logger = require('./logger');
 require('dotenv').config();
 
 async function start() {
@@ -28,7 +29,7 @@ async function start() {
   sock.ev.on('connection.update', update => {
     const { connection, lastDisconnect, qr } = update;
     if (qr) {
-      console.log('Scan this QR code with WhatsApp:');
+      logger.info('Scan this QR code with WhatsApp:');
       qrcode.generate(qr, { small: true });
     }
 
@@ -38,7 +39,7 @@ async function start() {
         DisconnectReason.loggedOut;
       if (shouldReconnect) start();
     } else if (connection === 'open') {
-      console.log('WhatsApp connection established');
+      logger.info('WhatsApp connection established');
     }
   });
 
@@ -56,12 +57,12 @@ async function start() {
         const reply = await sendMessage(org.id, org.assistant_id, sender, text);
         await sock.sendMessage(sender, { text: reply });
       } catch (err) {
-        console.error('Failed to handle message:', err);
+        logger.error('Failed to handle message:', err);
       }
     }
   });
 }
 
 start().catch(err => {
-  console.error('WhatsApp bot error:', err);
+  logger.error('WhatsApp bot error:', err);
 });

@@ -1,9 +1,10 @@
 const { createAssistant } = require('../assistant');
+const logger = require('../logger');
 
 async function main() {
   const orgId = process.argv[2];
   if (!orgId) {
-    console.error('Usage: node src/scripts/createAssistant.js <organizationId>');
+    logger.error('Usage: node src/scripts/createAssistant.js <organizationId>');
     process.exit(1);
   }
 
@@ -11,6 +12,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('Failed to create assistant:', err);
+  logger.error('Failed to create assistant:', err);
   process.exit(1);
 });

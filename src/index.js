@@ -1,5 +1,6 @@
 const pool = require('./db');
 const openai = require('./openai');
+const logger = require('./logger');
 
 /**
  * Create an organization and optionally an assistant in OpenAI.
@@ -19,12 +20,12 @@ async function listOrganizations() {
 
 async function main() {
   const org = await createOrganization('Acme Corp', '+123456789');
-  console.log('Organization created:', org);
+  logger.info('Organization created:', org);
 
   const orgs = await listOrganizations();
-  console.log('All organizations:', orgs);
+  logger.info('All organizations:', orgs);
 }
 
 main().catch(err => {
-  console.error(err);
+  logger.error(err);
 });

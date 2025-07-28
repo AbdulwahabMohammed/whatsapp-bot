@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const openai = require('./openai');
 const pool = require('./db');
+const logger = require('./logger');
 
 /**
  * Create an assistant for an organization.
@@ -18,7 +19,7 @@ async function createAssistant(organizationId) {
 
   await pool.query('UPDATE organizations SET assistant_id=$1 WHERE id=$2', [assistant.id, organizationId]);
 
-  console.log('Assistant created:', assistant.id);
+  logger.info(`Assistant created: ${assistant.id}`);
   return assistant;
 }
 
@@ -81,7 +82,7 @@ async function uploadFile(organizationId, filePath) {
     [organizationId, file.id, path.basename(filePath)]
   );
 
-  console.log('File uploaded and attached:', file.id);
+  logger.info(`File uploaded and attached: ${file.id}`);
   return file;
 }
 
