@@ -8,6 +8,8 @@ const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
 const logger = require('./logger');
 const pool = require('./db');
+const { createObjectCsvStringifier } = require('csv-writer');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 app.set('view engine', 'ejs');
@@ -144,6 +146,66 @@ app.post('/users/:id/role', requireAdmin, async (req, res) => {
   const { role } = req.body;
   await pool.query('UPDATE users SET role=$1 WHERE id=$2', [role, req.params.id]);
   res.redirect('/users');
+});
+
+app.get('/messages', requireAdmin, (req, res) => {
+  res.render('messages');
+});
+
+app.post('/messages', requireAdmin, async (req, res) => {
+  const { phone, from, to, export: exportType } = req.body;
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+  if (phone) {
+    conditions.push(`c.customer_phone=$${idx++}`);
+    params.push(phone);
+  }
+  if (from) {
+    conditions.push(`m.created_at >= $${idx++}`);
+    params.push(from);
+  }
+  if (to) {
+    conditions.push(`m.created_at <= $${idx++}`);
+    params.push(to);
+  }
+  let query =
+    'SELECT m.sender, m.text, m.created_at, c.customer_phone, o.name AS organization ' +
+    'FROM messages m JOIN conversations c ON m.conversation_id=c.id ' +
+    'JOIN organizations o ON c.organization_id=o.id';
+  if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+  query += ' ORDER BY m.created_at DESC';
+  const { rows } = await pool.query(query, params);
+
+  if (exportType === 'csv') {
+    const csvStringifier = createObjectCsvStringifier({
+      header: [
+        { id: 'created_at', title: 'Date' },
+        { id: 'organization', title: 'Organization' },
+        { id: 'customer_phone', title: 'Phone' },
+        { id: 'sender', title: 'Sender' },
+        { id: 'text', title: 'Text' },
+      ],
+    });
+    const csv = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(rows);
+    res.setHeader('Content-Type', 'text/csv');
+    res.attachment('messages.csv');
+    return res.send(csv);
+  }
+
+  if (exportType === 'pdf') {
+    const doc = new PDFDocument();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.attachment('messages.pdf');
+    doc.pipe(res);
+    rows.forEach(r => {
+      doc.text(`${r.created_at.toISOString()} | ${r.organization} | ${r.customer_phone} | ${r.sender} | ${r.text}`);
+      doc.moveDown();
+    });
+    return doc.end();
+  }
+
+  res.render('messageResults', { results: rows, phone, from, to });
 });
 
 const port = process.env.ADMIN_PORT || 3001;
