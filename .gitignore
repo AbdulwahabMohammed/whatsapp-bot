@@ -3,3 +3,4 @@ node_modules
 auth
 auth-*
 logs/
+uploads/

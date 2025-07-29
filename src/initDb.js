@@ -64,10 +64,19 @@ async function init() {
       id SERIAL PRIMARY KEY,
       conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
       sender TEXT NOT NULL,
-      text TEXT NOT NULL,
+      text TEXT,
+      attachment_type TEXT,
+      attachment_path TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+
+  await pool.query(
+    'ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT'
+  );
+  await pool.query(
+    'ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_path TEXT'
+  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS usage_stats (

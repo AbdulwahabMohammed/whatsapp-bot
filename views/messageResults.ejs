@@ -15,7 +15,20 @@
 </form>
 <ul>
 <% results.forEach(function(r){ %>
-  <li><%= r.created_at.toISOString().slice(0,16).replace('T',' ') %> | <%= r.organization %> | <%= r.customer_phone %> | <%= r.sender %> : <%= r.text %></li>
+  <li>
+    <%= r.created_at.toISOString().slice(0,16).replace('T',' ') %> |
+    <%= r.organization %> |
+    <%= r.customer_phone %> |
+    <%= r.sender %> :
+    <%= r.text %>
+    <% if (r.attachment_path) { %>
+      <% if (r.attachment_type === 'image') { %>
+        <br/><img src="/<%= r.attachment_path.replace(/^[.\\/]+/, '') %>" width="150"/>
+      <% } else { %>
+        <a href="/<%= r.attachment_path.replace(/^[.\\/]+/, '') %>">Attachment</a>
+      <% } %>
+    <% } %>
+  </li>
 <% }); %>
 </ul>
 <h2>Conversation Summaries</h2>
