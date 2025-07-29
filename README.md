@@ -25,9 +25,9 @@
    npm install
    ```
 3. تهيئة الجداول في قاعدة البيانات:
-   ```bash
-node src/initDb.js
-```
+  ```bash
+  node src/initDb.js
+  ```
 ينشئ هذا الأمر جداول `organizations` و`documents` و`conversations` بالإضافة
 إلى جدول **messages** الذي يحفظ نصوص كل الرسائل المتبادلة.
 كما يتم إنشاء مستخدم افتراضي باسم `admin` وكلمة المرور من المتغير `ADMIN_PASSWORD` مع دور `admin` لإدارة النظام.
