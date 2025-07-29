@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Users</title>
+</head>
+<body>
+<h1>Users</h1>
+<a href="/">Back</a>
+<a href="/users/new">Add User</a>
+<ul>
+<% users.forEach(function(u){ %>
+  <li>
+    <%= u.username %> - <%= u.role %>
+    <form action="/users/<%= u.id %>/role" method="post" style="display:inline;">
+      <select name="role">
+        <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>admin</option>
+        <option value="editor" <%= u.role === 'editor' ? 'selected' : '' %>>editor</option>
+      </select>
+      <button type="submit">Update</button>
+    </form>
+  </li>
+<% }); %>
+</ul>
+</body>
+</html>
