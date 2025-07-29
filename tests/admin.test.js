@@ -55,4 +55,8 @@ describe('admin routes', () => {
     await agent.post('/login').send('username=admin&password=secret');
     await agent.get('/').expect(200);
   });
+
+  it('serves metrics', async () => {
+    await request(app).get('/metrics').expect(200);
+  });
 });
