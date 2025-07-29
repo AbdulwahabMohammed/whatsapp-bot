@@ -1,6 +1,5 @@
 const request = require('supertest');
-
-process.env.ADMIN_PASSWORD = 'secret';
+const bcrypt = require('bcrypt');
 
 jest.mock('../src/index', () => ({
   createOrganization: jest.fn(async (n, p, i) => ({ id: 1, name: n, phone: p, instructions: i })),
@@ -20,22 +19,40 @@ jest.mock('../src/logger', () => ({
   error: jest.fn()
 }));
 
+jest.mock('../src/db', () => ({
+  query: jest.fn()
+}));
+
+const pool = require('../src/db');
+
 const app = require('../src/admin');
 const { createOrganization } = require('../src/index');
 
 describe('admin routes', () => {
+  beforeEach(() => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async text => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash }] };
+      }
+      return { rows: [] };
+    });
+  });
+
+  afterEach(() => {
+    pool.query.mockReset();
+  });
+
   it('creates organization', async () => {
-    await request(app)
-      .post('/org/new')
-      .auth('user', 'secret')
-      .send('name=Test&phone=123');
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret');
+    await agent.post('/org/new').send('name=Test&phone=123');
     expect(createOrganization).toHaveBeenCalledWith('Test', '123', undefined);
   });
 
   it('lists organizations', async () => {
-    await request(app)
-      .get('/')
-      .auth('u', 'secret')
-      .expect(200);
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret');
+    await agent.get('/').expect(200);
   });
 });

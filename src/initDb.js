@@ -1,5 +1,6 @@
 const pool = require('./db');
 const logger = require('./logger');
+const bcrypt = require('bcrypt');
 
 async function init() {
   await pool.query(`
@@ -52,6 +53,22 @@ async function init() {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL
+    );
+  `);
+
+  if (process.env.ADMIN_PASSWORD) {
+    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+    await pool.query(
+      'INSERT INTO users (username, password_hash) VALUES ($1, $2)\n        ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash',
+      ['admin', hash]
+    );
+  }
 
   logger.info('Database initialized');
   process.exit();
