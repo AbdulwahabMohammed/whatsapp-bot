@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-password}
+      POSTGRES_DB: ${PGDATABASE:-whatsapp_bot}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      PGHOST: db
+    depends_on:
+      - db
+    command: npm run whatsapp
+    ports:
+      - "${ADMIN_PORT:-3001}:3001"
+
+volumes:
+  db-data:

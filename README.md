@@ -68,3 +68,18 @@
 يوفر المجلد `docs/` شروحات تفصيلية حول إعداد المشروع واستخدامه، ومنها:
 - [docs/setup.md](docs/setup.md) – خطوات الإعداد المحلي.
 - [docs/openai.md](docs/openai.md) – كيفية تهيئة عميل OpenAI وملاحظات الإصدارات.
+
+## استخدام Docker
+يوفر المشروع ملفات `Dockerfile` و`docker-compose.yml` لتشغيل البوت داخل حاويات.
+
+1. انسخ `.env.example` إلى `.env` وعدل قيم متغيرات البيئة مثل مفاتيح OpenAI وإعدادات PostgreSQL.
+2. أنشئ الجداول داخل قاعدة البيانات (يُنفذ مرة واحدة):
+   ```bash
+   docker compose run --rm bot node src/initDb.js
+   ```
+3. شغل الخدمات:
+   ```bash
+   docker compose up --build
+   ```
+
+يعتمد `docker-compose.yml` على المتغيرات في ملف `.env` ويضبط متغير `PGHOST` تلقائيًا على `db`. تعمل قاعدة البيانات على المنفذ `5432` بينما تُعرض لوحة الإدارة على المنفذ المحدد في `ADMIN_PORT`.
