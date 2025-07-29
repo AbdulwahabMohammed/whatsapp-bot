@@ -17,7 +17,8 @@ jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jes
 
 jest.mock('../src/metrics', () => ({
   connectionGauge: { labels: () => ({ set: jest.fn() }) },
-  messageCounter: { labels: () => ({ inc: jest.fn() }) }
+  messageCounter: { labels: () => ({ inc: jest.fn() }) },
+  queueLengthGauge: { set: jest.fn() }
 }));
 
 jest.mock('../src/chat', () => ({ sendMessage: jest.fn() }));
