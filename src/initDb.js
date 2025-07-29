@@ -45,9 +45,19 @@ async function init() {
       organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
       customer_phone TEXT NOT NULL,
       thread_id TEXT NOT NULL,
+      detected_language TEXT,
+      summary TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+
+  await pool.query(
+    'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS detected_language TEXT'
+  );
+
+  await pool.query(
+    'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS summary TEXT'
+  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (

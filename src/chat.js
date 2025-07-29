@@ -32,7 +32,7 @@ async function retrieveRun(threadId, runId) {
 
 async function getOrCreateConversation(orgId, customerPhone) {
   const { rows } = await pool.query(
-    'SELECT id, thread_id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+    'SELECT id, thread_id, detected_language, summary FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
     [orgId, customerPhone]
   );
   if (rows[0]) return rows[0];
@@ -56,13 +56,34 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
     await pool.query('UPDATE conversations SET thread_id=$1 WHERE id=$2', [threadId, conv.id]);
   }
 
+  // Detect language on first message
+  if (!conv.detected_language) {
+    try {
+      const resp = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Detect the language of the following text. Reply with the ISO 639-1 code only.' },
+          { role: 'user', content: text }
+        ]
+      });
+      const code = resp.choices?.[0]?.message?.content?.trim().toLowerCase();
+      if (code) {
+        await pool.query('UPDATE conversations SET detected_language=$1 WHERE id=$2', [code, conv.id]);
+        conv.detected_language = code;
+      }
+    } catch (e) {
+      logger.warn('Language detection failed:', e);
+    }
+  }
+
   await openai.beta.threads.messages.create(threadId, {
     role: 'user',
     content: text,
   });
 
   const { rows } = await pool.query('SELECT language FROM organizations WHERE id=$1', [orgId]);
-  const lang = rows[0]?.language || 'ar';
+  const orgLang = rows[0]?.language || 'ar';
+  const lang = conv.detected_language || orgLang;
 
   const run = await openai.beta.threads.runs.create(threadId, {
     assistant_id: assistantId,

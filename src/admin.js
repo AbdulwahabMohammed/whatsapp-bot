@@ -206,6 +206,15 @@ app.post('/messages', requireAdmin, async (req, res) => {
   query += ' ORDER BY m.created_at DESC';
   const { rows } = await pool.query(query, params);
 
+  let sumQuery = 'SELECT id, customer_phone, summary FROM conversations WHERE summary IS NOT NULL';
+  const sumParams = [];
+  if (phone) {
+    sumQuery += ' AND customer_phone=$1';
+    sumParams.push(phone);
+  }
+  sumQuery += ' ORDER BY id DESC LIMIT 50';
+  const { rows: summaries } = await pool.query(sumQuery, sumParams);
+
   if (exportType === 'csv') {
     const csvStringifier = createObjectCsvStringifier({
       header: [
@@ -234,7 +243,7 @@ app.post('/messages', requireAdmin, async (req, res) => {
     return doc.end();
   }
 
-  res.render('messageResults', { results: rows, phone, from, to });
+  res.render('messageResults', { results: rows, summaries, phone, from, to });
 });
 
 app.get('/usage', requireAdmin, async (req, res) => {
