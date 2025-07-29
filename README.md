@@ -36,6 +36,7 @@
    ```bash
    node src/scripts/createAssistant.js <organizationId>
    ```
+   يمكن تحديد نص التعليمات الخاص بالمنشأة عبر لوحة الإدارة أو مباشرة في الجدول، وسيتم استخدامه عند إنشاء المساعد أو تحديثه.
 6. رفع ملف مرجعي وربطه بالمساعد:
    ```bash
    node src/scripts/uploadFile.js <organizationId> <path/to/file>

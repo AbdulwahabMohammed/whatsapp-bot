@@ -8,9 +8,26 @@ const logger = require('./logger');
  * Create an assistant for an organization.
  */
 async function createAssistant(organizationId) {
+  const orgRes = await pool.query(
+    'SELECT assistant_id, instructions FROM organizations WHERE id=$1',
+    [organizationId]
+  );
+  const org = orgRes.rows[0];
+  const instructions =
+    org?.instructions ||
+    'رد فقط باستخدام البيانات المقدمة من الملفات المرجعية الخاصة بالمنشأة.';
+
+  if (org?.assistant_id) {
+    const assistant = await openai.beta.assistants.update(org.assistant_id, {
+      instructions,
+    });
+    logger.info(`Assistant updated: ${assistant.id}`);
+    return assistant;
+  }
+
   const assistant = await openai.beta.assistants.create({
     name: `Org-${organizationId}-Assistant`,
-    instructions: 'رد فقط باستخدام البيانات المقدمة من الملفات المرجعية الخاصة بالمنشأة.',
+    instructions,
     // Use file_search tool to allow the assistant to access uploaded reference
     // documents for this organization.
     tools: [{ type: 'file_search' }],

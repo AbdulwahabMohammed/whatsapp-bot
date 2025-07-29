@@ -3,7 +3,7 @@ const request = require('supertest');
 process.env.ADMIN_PASSWORD = 'secret';
 
 jest.mock('../src/index', () => ({
-  createOrganization: jest.fn(async (n, p) => ({ id: 1, name: n, phone: p })),
+  createOrganization: jest.fn(async (n, p, i) => ({ id: 1, name: n, phone: p, instructions: i })),
   listOrganizations: jest.fn(async () => ([]))
 }));
 
@@ -29,7 +29,7 @@ describe('admin routes', () => {
       .post('/org/new')
       .auth('user', 'secret')
       .send('name=Test&phone=123');
-    expect(createOrganization).toHaveBeenCalledWith('Test', '123');
+    expect(createOrganization).toHaveBeenCalledWith('Test', '123', undefined);
   });
 
   it('lists organizations', async () => {

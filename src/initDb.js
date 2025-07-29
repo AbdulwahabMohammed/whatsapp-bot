@@ -7,6 +7,7 @@ async function init() {
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       phone TEXT,
+      instructions TEXT,
       assistant_id TEXT,
       vector_store_id TEXT,
       created_at TIMESTAMP DEFAULT NOW()
@@ -16,6 +17,10 @@ async function init() {
   // Ensure the vector_store_id column exists when upgrading an older schema
   await pool.query(
     'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS vector_store_id TEXT'
+  );
+
+  await pool.query(
+    'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS instructions TEXT'
   );
 
   await pool.query(`
