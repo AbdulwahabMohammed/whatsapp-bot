@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Message Results</title>
+</head>
+<body>
+<h1>Message Results</h1>
+<a href="/messages">Back</a>
+<form action="/messages" method="post">
+  <input type="hidden" name="phone" value="<%= phone %>"/>
+  <input type="hidden" name="from" value="<%= from %>"/>
+  <input type="hidden" name="to" value="<%= to %>"/>
+  <button type="submit" name="export" value="csv">Export CSV</button>
+  <button type="submit" name="export" value="pdf">Export PDF</button>
+</form>
+<ul>
+<% results.forEach(function(r){ %>
+  <li><%= r.created_at.toISOString().slice(0,16).replace('T',' ') %> | <%= r.organization %> | <%= r.customer_phone %> | <%= r.sender %> : <%= r.text %></li>
+<% }); %>
+</ul>
+</body>
+</html>
