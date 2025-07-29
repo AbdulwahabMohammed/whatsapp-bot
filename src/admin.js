@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
 const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
@@ -10,22 +12,42 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'secret',
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
-// Basic auth middleware
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  const { rows } = await pool.query(
+    'SELECT password_hash FROM users WHERE username=$1',
+    [username]
+  );
+  const user = rows[0];
+  if (user && (await bcrypt.compare(password, user.password_hash))) {
+    req.session.user = username;
+    return res.redirect('/');
+  }
+  res.status(401).send('Invalid credentials');
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
+
+// auth middleware
 app.use((req, res, next) => {
-  const auth = req.headers.authorization;
-  if (!auth) {
-    res.set('WWW-Authenticate', 'Basic realm="admin"');
-    return res.status(401).send('Authentication required.');
-  }
-  const [, base64] = auth.split(' ');
-  const [user, pass] = Buffer.from(base64, 'base64').toString().split(':');
-  if (pass !== process.env.ADMIN_PASSWORD) {
-    res.set('WWW-Authenticate', 'Basic realm="admin"');
-    return res.status(401).send('Access denied');
-  }
-  req.user = user;
-  next();
+  if (req.session.user) return next();
+  res.redirect('/login');
 });
 
 app.get('/', async (req, res) => {
