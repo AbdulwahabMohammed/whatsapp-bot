@@ -49,6 +49,23 @@ async function startForOrg(org) {
 
       try {
         const reply = await sendMessage(org.id, org.assistant_id, sender, text);
+
+        const { rows } = await pool.query(
+          'SELECT id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+          [org.id, sender]
+        );
+        const conversationId = rows[0]?.id;
+        if (conversationId) {
+          await pool.query(
+            'INSERT INTO messages (conversation_id, sender, text) VALUES ($1, $2, $3)',
+            [conversationId, 'user', text]
+          );
+          await pool.query(
+            'INSERT INTO messages (conversation_id, sender, text) VALUES ($1, $2, $3)',
+            [conversationId, 'assistant', reply]
+          );
+        }
+
         await sock.sendMessage(sender, { text: reply });
       } catch (err) {
         logger.error('Failed to handle message:', err);
