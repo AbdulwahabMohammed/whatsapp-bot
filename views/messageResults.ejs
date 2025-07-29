@@ -18,5 +18,11 @@
   <li><%= r.created_at.toISOString().slice(0,16).replace('T',' ') %> | <%= r.organization %> | <%= r.customer_phone %> | <%= r.sender %> : <%= r.text %></li>
 <% }); %>
 </ul>
+<h2>Conversation Summaries</h2>
+<ul>
+<% summaries.forEach(function(s){ %>
+  <li><strong><%= s.customer_phone %></strong>: <%= s.summary %></li>
+<% }); %>
+</ul>
 </body>
 </html>

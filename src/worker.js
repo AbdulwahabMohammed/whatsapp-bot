@@ -9,8 +9,11 @@ const { Worker } = require('bullmq');
 const { sendMessage } = require('./chat');
 const pool = require('./db');
 const logger = require('./logger');
+const openai = require('./openai');
 const { connectionGauge, messageCounter } = require('./metrics');
 require('dotenv').config();
+
+const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
 
 const sockets = {};
 
@@ -82,6 +85,31 @@ const worker = new Worker(
       if (conversationId) {
         await pool.query('INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)', [conversationId, 'user', text]);
         await pool.query('INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)', [conversationId, 'assistant', reply]);
+
+        const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM messages WHERE conversation_id=$1', [conversationId]);
+        const count = parseInt(countRows[0].count, 10);
+        if (count >= SUMMARY_LIMIT) {
+          const { rows: convRows } = await pool.query('SELECT summary FROM conversations WHERE id=$1', [conversationId]);
+          if (!convRows[0]?.summary) {
+            const { rows: msgs } = await pool.query('SELECT sender, text FROM messages WHERE conversation_id=$1 ORDER BY id', [conversationId]);
+            const convoText = msgs.map(m => `${m.sender}: ${m.text}`).join('\n');
+            try {
+              const resp = await openai.chat.completions.create({
+                model: 'gpt-3.5-turbo',
+                messages: [
+                  { role: 'system', content: 'Summarize the following conversation briefly.' },
+                  { role: 'user', content: convoText }
+                ]
+              });
+              const summary = resp.choices?.[0]?.message?.content?.trim();
+              if (summary) {
+                await pool.query('UPDATE conversations SET summary=$1 WHERE id=$2', [summary, conversationId]);
+              }
+            } catch (err) {
+              logger.error('Failed to generate summary:', err);
+            }
+          }
+        }
       }
       messageCounter.labels(String(orgId), 'sent').inc();
       await sock.sendMessage(sender, { text: reply });

@@ -24,13 +24,19 @@ jest.mock('../src/openai', () => {
         },
       },
     },
+    chat: {
+      completions: {
+        create: jest.fn(async () => ({ choices: [{ message: { content: 'en' } }] })),
+      },
+    },
   };
 });
 
 jest.mock('../src/db', () => {
   const mockQuery = jest.fn()
     .mockResolvedValueOnce({ rows: [] })
-    .mockResolvedValueOnce({ rows: [{ id: 1, thread_id: 't1' }] })
+    .mockResolvedValueOnce({ rows: [{ id: 1, thread_id: 't1', detected_language: null }] })
+    .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [{ language: 'ar' }] })
     .mockResolvedValue({ rows: [] });
   return { query: mockQuery };
@@ -39,9 +45,10 @@ jest.mock('../src/db', () => {
 describe('sendMessage', () => {
   it('resolves with the reply text', async () => {
     await expect(sendMessage(1, 'a1', '123', 'hi')).resolves.toBe('mock-reply');
+    expect(openai.chat.completions.create).toHaveBeenCalled();
     expect(openai.beta.threads.runs.create).toHaveBeenCalledWith('t1', {
       assistant_id: 'a1',
-      instructions: 'Please respond in ar',
+      instructions: 'Please respond in en',
     });
   });
 });
