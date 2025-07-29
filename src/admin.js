@@ -60,8 +60,8 @@ app.get('/org/new', (req, res) => {
 });
 
 app.post('/org/new', async (req, res) => {
-  const { name, phone, instructions } = req.body;
-  await createOrganization(name, phone, instructions);
+  const { name, phone, instructions, language } = req.body;
+  await createOrganization(name, phone, instructions, language);
   res.redirect('/');
 });
 

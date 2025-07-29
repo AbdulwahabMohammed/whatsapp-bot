@@ -4,10 +4,10 @@ const logger = require('./logger');
 /**
  * Create an organization entry in the database.
  */
-async function createOrganization(name, phone, instructions) {
+async function createOrganization(name, phone, instructions, language = 'ar') {
   const { rows } = await pool.query(
-    'INSERT INTO organizations (name, phone, instructions) VALUES ($1, $2, $3) RETURNING *',
-    [name, phone, instructions]
+    'INSERT INTO organizations (name, phone, instructions, language) VALUES ($1, $2, $3, $4) RETURNING *',
+    [name, phone, instructions, language]
   );
   return rows[0];
 }

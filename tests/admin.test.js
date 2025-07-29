@@ -2,7 +2,7 @@ const request = require('supertest');
 const bcrypt = require('bcrypt');
 
 jest.mock('../src/index', () => ({
-  createOrganization: jest.fn(async (n, p, i) => ({ id: 1, name: n, phone: p, instructions: i })),
+  createOrganization: jest.fn(async (n, p, i, l) => ({ id: 1, name: n, phone: p, instructions: i, language: l })),
   listOrganizations: jest.fn(async () => ([]))
 }));
 
@@ -47,7 +47,7 @@ describe('admin routes', () => {
     const agent = request.agent(app);
     await agent.post('/login').send('username=admin&password=secret');
     await agent.post('/org/new').send('name=Test&phone=123');
-    expect(createOrganization).toHaveBeenCalledWith('Test', '123', undefined);
+    expect(createOrganization).toHaveBeenCalledWith('Test', '123', undefined, undefined);
   });
 
   it('lists organizations', async () => {

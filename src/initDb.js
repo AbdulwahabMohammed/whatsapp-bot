@@ -11,6 +11,7 @@ async function init() {
       instructions TEXT,
       assistant_id TEXT,
       vector_store_id TEXT,
+      language TEXT DEFAULT 'ar',
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
@@ -22,6 +23,10 @@ async function init() {
 
   await pool.query(
     'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS instructions TEXT'
+  );
+
+  await pool.query(
+    "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ar'"
   );
 
   await pool.query(`
