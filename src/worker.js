@@ -5,11 +5,14 @@ const {
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
+const { Worker } = require('bullmq');
+const { sendMessage } = require('./chat');
 const pool = require('./db');
-const { messageQueue } = require('./queue');
 const logger = require('./logger');
 const { connectionGauge, messageCounter } = require('./metrics');
 require('dotenv').config();
+
+const sockets = {};
 
 async function startForOrg(org, attempt = 0) {
   if (!org.assistant_id) {
@@ -17,13 +20,11 @@ async function startForOrg(org, attempt = 0) {
   }
 
   connectionGauge.labels(String(org.id)).set(0);
-
   const MAX_RECONNECTS = parseInt(process.env.MAX_RECONNECTS || '5', 10);
 
   const { state, saveCreds } = await useMultiFileAuthState(`auth-${org.id}`);
-  const sock = makeWASocket({
-    auth: state,
-  });
+  const sock = makeWASocket({ auth: state });
+  sockets[org.id] = sock;
 
   sock.ev.on('connection.update', update => {
     const { connection, lastDisconnect, qr } = update;
@@ -46,7 +47,7 @@ async function startForOrg(org, attempt = 0) {
           );
           setTimeout(() => {
             startForOrg(org, nextAttempt).catch(err => {
-              logger.error(`WhatsApp bot error for org ${org.id}:`, err);
+              logger.error(`WhatsApp worker error for org ${org.id}:`, err);
             });
           }, delay);
         } else {
@@ -60,29 +61,36 @@ async function startForOrg(org, attempt = 0) {
   });
 
   sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return;
-    for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe) continue;
-      const sender = msg.key.remoteJid;
-      const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
-      if (!text) continue;
-      messageCounter.labels(String(org.id), 'received').inc();
-
-      try {
-        await messageQueue.add('message', {
-          orgId: org.id,
-          assistantId: org.assistant_id,
-          sender,
-          text,
-        });
-      } catch (err) {
-        logger.error('Failed to queue message:', err);
-      }
-    }
-  });
 }
+
+const worker = new Worker(
+  'messages',
+  async job => {
+    const { orgId, assistantId, sender, text } = job.data;
+    const sock = sockets[orgId];
+    if (!sock) {
+      logger.error(`No WhatsApp connection for org ${orgId}`);
+      return;
+    }
+    try {
+      const reply = await sendMessage(orgId, assistantId, sender, text);
+      const { rows } = await pool.query(
+        'SELECT id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+        [orgId, sender]
+      );
+      const conversationId = rows[0]?.id;
+      if (conversationId) {
+        await pool.query('INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)', [conversationId, 'user', text]);
+        await pool.query('INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)', [conversationId, 'assistant', reply]);
+      }
+      messageCounter.labels(String(orgId), 'sent').inc();
+      await sock.sendMessage(sender, { text: reply });
+    } catch (err) {
+      logger.error('Failed to process job:', err);
+    }
+  },
+  { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
+);
 
 async function start() {
   const { rows } = await pool.query('SELECT * FROM organizations WHERE assistant_id IS NOT NULL');
@@ -91,11 +99,11 @@ async function start() {
   }
   for (const org of rows) {
     startForOrg(org).catch(err => {
-      logger.error(`WhatsApp bot error for org ${org.id}:`, err);
+      logger.error(`WhatsApp worker error for org ${org.id}:`, err);
     });
   }
 }
 
 start().catch(err => {
-  logger.error('Failed to start WhatsApp bots:', err);
+  logger.error('Failed to start worker:', err);
 });

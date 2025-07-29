@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+</head>
+<body>
+<h1>Dashboard</h1>
+<a href="/">Back</a>
+<div id="status"></div>
+<script>
+const div = document.getElementById('status');
+const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+ws.onmessage = evt => {
+  const data = JSON.parse(evt.data);
+  div.innerHTML = '<p>Queue length: ' + data.queue + '</p>';
+  const ul = document.createElement('ul');
+  for (const id in data.connections) {
+    const li = document.createElement('li');
+    li.textContent = 'Org ' + id + ': ' + (data.connections[id] ? 'connected' : 'disconnected');
+    ul.appendChild(li);
+  }
+  div.appendChild(ul);
+};
+</script>
+</body>
+</html>

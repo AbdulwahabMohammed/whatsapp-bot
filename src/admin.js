@@ -1,8 +1,10 @@
 const express = require('express');
+const expressWs = require('express-ws');
 const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const { client, requestCounter } = require('./metrics');
+const { client, requestCounter, connectionGauge } = require('./metrics');
+const { getQueueLength } = require('./queue');
 const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
@@ -12,6 +14,9 @@ const { createObjectCsvStringifier } = require('csv-writer');
 const PDFDocument = require('pdfkit');
 
 const app = express();
+expressWs(app);
+
+const wsClients = new Set();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(express.urlencoded({ extended: true }));
@@ -48,6 +53,26 @@ app.get('/metrics', async (req, res) => {
   res.end(await client.register.metrics());
 });
 
+app.ws('/ws', (ws, _req) => {
+  wsClients.add(ws);
+  ws.on('close', () => wsClients.delete(ws));
+});
+
+async function broadcastStatus() {
+  const queue = await getQueueLength();
+  const conn = {};
+  const values = connectionGauge.get().values || [];
+  values.forEach(v => {
+    conn[v.labels.org_id] = v.value;
+  });
+  const data = JSON.stringify({ queue, connections: conn });
+  wsClients.forEach(client => {
+    try { client.send(data); } catch (e) {}
+  });
+}
+
+setInterval(broadcastStatus, 5000);
+
 app.get('/login', (req, res) => {
   res.render('login');
 });
@@ -75,6 +100,10 @@ app.get('/logout', (req, res) => {
 
 app.get('/stats', (req, res) => {
   res.render('stats');
+});
+
+app.get('/dashboard', (req, res) => {
+  res.render('dashboard');
 });
 
 // auth middleware
