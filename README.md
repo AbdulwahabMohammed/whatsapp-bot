@@ -16,8 +16,9 @@
 
 ## خطوات التثبيت والتشغيل
 1. نسخ الملف `.env.example` إلى `.env` وتعبئة مفاتيح OpenAI وبيانات PostgreSQL،
-   مع تحديد متغيرات `ADMIN_PASSWORD` و`ADMIN_PORT` للوحة الإدارة، ويمكن ضبط
-   `LOG_LEVEL` لتغيير مستوى السجلات.
+   مع تحديد متغيرات `ADMIN_PASSWORD` و`ADMIN_PORT` و`SESSION_SECRET` للوحة الإدارة.
+   يمكن كذلك تعديل `SUMMARY_MESSAGE_LIMIT` لتحديد عدد الرسائل قبل تلخيص المحادثة،
+   وضبط `LOG_LEVEL` لتغيير مستوى السجلات.
 2. تثبيت الاعتمادات:
    ```bash
    npm install
@@ -80,7 +81,9 @@ npm run admin
 ## استخدام Docker
 يوفر المشروع ملفات `Dockerfile` و`docker-compose.yml` لتشغيل البوت داخل حاويات.
 
-1. انسخ `.env.example` إلى `.env` وعدل قيم متغيرات البيئة مثل مفاتيح OpenAI وإعدادات PostgreSQL.
+1. انسخ `.env.example` إلى `.env` وعدل قيم متغيرات البيئة مثل مفاتيح OpenAI وإعدادات PostgreSQL،
+   ولا تنس تعيين `SESSION_SECRET`. يمكن تعديل `SUMMARY_MESSAGE_LIMIT` إذا أردت تغيير
+   عدد الرسائل قبل تلخيص المحادثة.
 2. أنشئ الجداول داخل قاعدة البيانات (يُنفذ مرة واحدة):
    ```bash
    docker compose run --rm bot node src/initDb.js
