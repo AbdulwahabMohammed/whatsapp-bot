@@ -4,6 +4,7 @@ const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
 const logger = require('./logger');
+const pool = require('./db');
 
 const app = express();
 app.set('view engine', 'ejs');
@@ -37,18 +38,24 @@ app.get('/org/new', (req, res) => {
 });
 
 app.post('/org/new', async (req, res) => {
-  const { name, phone } = req.body;
-  await createOrganization(name, phone);
+  const { name, phone, instructions } = req.body;
+  await createOrganization(name, phone, instructions);
   res.redirect('/');
 });
 
 app.post('/org/:id/assistant', async (req, res) => {
+  const { instructions } = req.body;
+  if (instructions !== undefined) {
+    await pool.query('UPDATE organizations SET instructions=$1 WHERE id=$2', [instructions, req.params.id]);
+  }
   await createAssistant(req.params.id);
   res.redirect('/');
 });
 
-app.get('/org/:id/assistant', (req, res) => {
-  res.render('createAssistant', { orgId: req.params.id });
+app.get('/org/:id/assistant', async (req, res) => {
+  const { rows } = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [req.params.id]);
+  const instructions = rows[0]?.instructions || '';
+  res.render('createAssistant', { orgId: req.params.id, instructions });
 });
 
 app.get('/org/:id/upload', (req, res) => {

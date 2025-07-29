@@ -4,10 +4,10 @@ const logger = require('./logger');
 /**
  * Create an organization entry in the database.
  */
-async function createOrganization(name, phone) {
+async function createOrganization(name, phone, instructions) {
   const { rows } = await pool.query(
-    'INSERT INTO organizations (name, phone) VALUES ($1, $2) RETURNING *',
-    [name, phone]
+    'INSERT INTO organizations (name, phone, instructions) VALUES ($1, $2, $3) RETURNING *',
+    [name, phone, instructions]
   );
   return rows[0];
 }
@@ -18,7 +18,7 @@ async function listOrganizations() {
 }
 
 async function main() {
-  const org = await createOrganization('Acme Corp', '+123456789');
+  const org = await createOrganization('Acme Corp', '+123456789', null);
   logger.info('Organization created:', org);
 
   const orgs = await listOrganizations();

@@ -6,6 +6,9 @@
 <body>
 <h1>Create Assistant for Organization <%= orgId %></h1>
 <form action="/org/<%= orgId %>/assistant" method="post">
+  <label>Instructions:<br/>
+    <textarea name="instructions" rows="5" cols="40"><%= instructions %></textarea>
+  </label><br/>
   <button type="submit">Create</button>
 </form>
 </body>
