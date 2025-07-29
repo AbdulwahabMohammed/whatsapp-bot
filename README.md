@@ -53,9 +53,10 @@ node src/initDb.js
 
 8. تشغيل واجهة الإدارة:
    ```bash
-npm run admin
-```
-تتطلب الواجهة تعيين المتغيرين `ADMIN_PASSWORD` و`ADMIN_PORT` في ملف البيئة.
+   npm run admin
+   ```
+   يشغِّل هذا الأمر الخادم عبر الدالة `startAdminServer()` في `src/admin.js`.
+   تتطلب الواجهة تعيين المتغيرين `ADMIN_PASSWORD` و`ADMIN_PORT` في ملف البيئة.
 بعد تسجيل الدخول يمكن إدارة المستخدمين عبر صفحة `/users` وتعديل أدوارهم بين `admin` و`editor`.
 يمكن كذلك البحث في سجل الرسائل من خلال صفحة `/messages` مع إمكانية تصدير النتائج بصيغة CSV أو PDF.
 
