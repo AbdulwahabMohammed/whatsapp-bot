@@ -8,12 +8,15 @@ const qrcode = require('qrcode-terminal');
 const pool = require('./db');
 const { sendMessage } = require('./chat');
 const logger = require('./logger');
+const { connectionGauge } = require('./metrics');
 require('dotenv').config();
 
 async function startForOrg(org, attempt = 0) {
   if (!org.assistant_id) {
     throw new Error(`Organization ${org.id} does not have an assistant`);
   }
+
+  connectionGauge.labels(String(org.id)).set(0);
 
   const MAX_RECONNECTS = parseInt(process.env.MAX_RECONNECTS || '5', 10);
 
@@ -30,6 +33,7 @@ async function startForOrg(org, attempt = 0) {
     }
 
     if (connection === 'close') {
+      connectionGauge.labels(String(org.id)).set(0);
       const shouldReconnect =
         (lastDisconnect?.error instanceof Boom ? lastDisconnect.error.output.statusCode : 0) !==
         DisconnectReason.loggedOut;
@@ -51,6 +55,7 @@ async function startForOrg(org, attempt = 0) {
       }
     } else if (connection === 'open') {
       logger.info('WhatsApp connection established');
+      connectionGauge.labels(String(org.id)).set(1);
     }
   });
 

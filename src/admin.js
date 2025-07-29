@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const { client, requestCounter } = require('./metrics');
 const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
@@ -19,6 +20,21 @@ app.use(
     saveUninitialized: false,
   })
 );
+
+// count all incoming requests
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    const route = req.route?.path || req.path;
+    requestCounter.inc({ method: req.method, route, status: res.statusCode });
+  });
+  next();
+});
+
+// expose Prometheus metrics without auth
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
 
 app.get('/login', (req, res) => {
   res.render('login');
