@@ -24,10 +24,11 @@
    ```
 3. تهيئة الجداول في قاعدة البيانات:
    ```bash
-   node src/initDb.js
-   ```
-   ينشئ هذا الأمر جداول `organizations` و`documents` و`conversations` بالإضافة
-   إلى جدول **messages** الذي يحفظ نصوص كل الرسائل المتبادلة.
+node src/initDb.js
+```
+ينشئ هذا الأمر جداول `organizations` و`documents` و`conversations` بالإضافة
+إلى جدول **messages** الذي يحفظ نصوص كل الرسائل المتبادلة.
+كما يتم إنشاء مستخدم افتراضي باسم `admin` وكلمة المرور من المتغير `ADMIN_PASSWORD` مع دور `admin` لإدارة النظام.
 4. تشغيل المثال الأساسي:
    ```bash
    npm start
@@ -50,9 +51,10 @@
 
 8. تشغيل واجهة الإدارة:
    ```bash
-   npm run admin
-   ```
-   تتطلب الواجهة تعيين المتغيرين `ADMIN_PASSWORD` و`ADMIN_PORT` في ملف البيئة.
+npm run admin
+```
+تتطلب الواجهة تعيين المتغيرين `ADMIN_PASSWORD` و`ADMIN_PORT` في ملف البيئة.
+بعد تسجيل الدخول يمكن إدارة المستخدمين عبر صفحة `/users` وتعديل أدوارهم بين `admin` و`editor`.
 
 ## بنية المجلد `src/`
 - `db.js` – إعداد اتصال PostgreSQL.

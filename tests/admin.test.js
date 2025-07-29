@@ -33,7 +33,7 @@ describe('admin routes', () => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
       if (text.includes('SELECT password_hash')) {
-        return { rows: [{ password_hash: hash }] };
+        return { rows: [{ password_hash: hash, role: 'admin' }] };
       }
       return { rows: [] };
     });

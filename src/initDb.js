@@ -63,15 +63,20 @@ async function init() {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'admin'
     );
   `);
+
+  await pool.query(
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'"
+  );
 
   if (process.env.ADMIN_PASSWORD) {
     const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
     await pool.query(
-      'INSERT INTO users (username, password_hash) VALUES ($1, $2)\n        ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash',
-      ['admin', hash]
+      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)\n        ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role',
+      ['admin', hash, 'admin']
     );
   }
 

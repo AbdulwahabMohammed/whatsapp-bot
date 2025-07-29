@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>New User</title>
+</head>
+<body>
+<h1>Create User</h1>
+<form action="/users/new" method="post">
+  <div>
+    <label>Username</label>
+    <input type="text" name="username">
+  </div>
+  <div>
+    <label>Password</label>
+    <input type="password" name="password">
+  </div>
+  <div>
+    <label>Role</label>
+    <select name="role">
+      <option value="admin">admin</option>
+      <option value="editor">editor</option>
+    </select>
+  </div>
+  <button type="submit">Save</button>
+</form>
+</body>
+</html>
