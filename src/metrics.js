@@ -14,6 +14,11 @@ const connectionGauge = new client.Gauge({
   labelNames: ['org_id'],
 });
 
+const queueLengthGauge = new client.Gauge({
+  name: 'queue_length',
+  help: 'Number of messages waiting in the queue',
+});
+
 const messageCounter = new client.Counter({
   name: 'whatsapp_messages_total',
   help: 'Total number of WhatsApp messages processed',
@@ -25,4 +30,5 @@ module.exports = {
   requestCounter,
   connectionGauge,
   messageCounter,
+  queueLengthGauge,
 };

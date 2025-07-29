@@ -3,7 +3,12 @@ const expressWs = require('express-ws');
 const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const { client, requestCounter, connectionGauge } = require('./metrics');
+const {
+  client,
+  requestCounter,
+  connectionGauge,
+  queueLengthGauge,
+} = require('./metrics');
 const { getQueueLength } = require('./queue');
 const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
@@ -60,6 +65,7 @@ app.ws('/ws', (ws, _req) => {
 
 async function broadcastStatus() {
   const queue = await getQueueLength();
+  queueLengthGauge.set(queue);
   const conn = {};
   const values = connectionGauge.get().values || [];
   values.forEach(v => {
