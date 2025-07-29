@@ -112,6 +112,7 @@ async function startForOrg(org, attempt = 0) {
           text,
           attachmentType,
           attachmentPath,
+          receivedAt: Date.now(),
         });
       } catch (err) {
         logger.error('Failed to queue message:', err);

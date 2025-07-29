@@ -102,6 +102,12 @@ const worker = new Worker(
           [conversationId, 'assistant', reply, replyAttachmentType, replyAttachmentPath]
         );
 
+        const latency = Date.now() - (job.data.receivedAt || Date.now());
+        await pool.query(
+          'INSERT INTO conversation_stats (conversation_id, response_time_ms) VALUES ($1,$2)',
+          [conversationId, latency]
+        );
+
         const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM messages WHERE conversation_id=$1', [conversationId]);
         const count = parseInt(countRows[0].count, 10);
         if (count >= SUMMARY_LIMIT) {

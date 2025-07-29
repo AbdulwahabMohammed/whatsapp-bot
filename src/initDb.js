@@ -89,6 +89,15 @@ async function init() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS conversation_stats (
+      id SERIAL PRIMARY KEY,
+      conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+      response_time_ms INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,

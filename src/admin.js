@@ -268,6 +268,16 @@ app.get('/usage', requireAdmin, async (req, res) => {
   res.render('usage', { stats: rows });
 });
 
+app.get('/analytics', requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT DATE(created_at) AS date, AVG(response_time_ms) AS avg_response
+       FROM conversation_stats
+      GROUP BY DATE(created_at)
+      ORDER BY date`
+  );
+  res.render('analytics', { stats: rows });
+});
+
 function startAdminServer() {
   const port = process.env.ADMIN_PORT || 3001;
   statusInterval = setInterval(broadcastStatus, 5000);
