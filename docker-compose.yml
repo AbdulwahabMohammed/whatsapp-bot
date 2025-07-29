@@ -12,16 +12,34 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   bot:
     build: .
     env_file: .env
     environment:
       PGHOST: db
+      REDIS_URL: redis://redis:6379
     depends_on:
       - db
+      - redis
     command: npm run whatsapp
     ports:
       - "${ADMIN_PORT:-3001}:3001"
+
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      PGHOST: db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    command: npm run worker
 
 volumes:
   db-data:

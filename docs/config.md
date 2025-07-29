@@ -10,6 +10,7 @@
 | `PGDATABASE` | `whatsapp_bot` | اسم قاعدة البيانات المستخدمة |
 | `PGPASSWORD` | `password` | كلمة مرور المستخدم |
 | `PGPORT` | `5432` | منفذ اتصال PostgreSQL |
+| `REDIS_URL` | `redis://localhost:6379` | عنوان خادم Redis المستخدم لطابور الرسائل |
 | `ADMIN_PASSWORD` | `your-password` | كلمة المرور المطلوبة لدخول واجهة الإدارة |
 | `ADMIN_PORT` | `3001` | المنفذ الذي تعمل عليه لوحة الإدارة |
 | `LOG_LEVEL` | `info` | مستوى رسائل السجل (`info`، `error`، وغيرها) |
