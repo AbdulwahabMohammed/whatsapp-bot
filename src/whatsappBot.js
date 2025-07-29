@@ -10,10 +10,12 @@ const { sendMessage } = require('./chat');
 const logger = require('./logger');
 require('dotenv').config();
 
-async function startForOrg(org) {
+async function startForOrg(org, attempt = 0) {
   if (!org.assistant_id) {
     throw new Error(`Organization ${org.id} does not have an assistant`);
   }
+
+  const MAX_RECONNECTS = parseInt(process.env.MAX_RECONNECTS || '5', 10);
 
   const { state, saveCreds } = await useMultiFileAuthState(`auth-${org.id}`);
   const sock = makeWASocket({
@@ -31,7 +33,22 @@ async function startForOrg(org) {
       const shouldReconnect =
         (lastDisconnect?.error instanceof Boom ? lastDisconnect.error.output.statusCode : 0) !==
         DisconnectReason.loggedOut;
-      if (shouldReconnect) startForOrg(org);
+      if (shouldReconnect) {
+        if (attempt < MAX_RECONNECTS) {
+          const delay = Math.min(30000, 2 ** attempt * 1000);
+          const nextAttempt = attempt + 1;
+          logger.warn(
+            `WhatsApp disconnected for org ${org.id}, retrying in ${delay}ms (attempt ${nextAttempt}/${MAX_RECONNECTS})`
+          );
+          setTimeout(() => {
+            startForOrg(org, nextAttempt).catch(err => {
+              logger.error(`WhatsApp bot error for org ${org.id}:`, err);
+            });
+          }, delay);
+        } else {
+          logger.error(`Max reconnect attempts reached for org ${org.id}`);
+        }
+      }
     } else if (connection === 'open') {
       logger.info('WhatsApp connection established');
     }
