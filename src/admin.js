@@ -71,6 +71,10 @@ app.get('/logout', (req, res) => {
   });
 });
 
+app.get('/stats', (req, res) => {
+  res.render('stats');
+});
+
 // auth middleware
 app.use((req, res, next) => {
   if (req.session.user) return next();

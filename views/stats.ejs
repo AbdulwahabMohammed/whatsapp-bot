@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stats</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<h1>Statistics</h1>
+<a href="/">Back</a>
+<canvas id="connectionChart" width="400" height="200"></canvas>
+<canvas id="messageChart" width="400" height="200"></canvas>
+<script>
+async function loadMetrics() {
+  const res = await fetch('/metrics');
+  const text = await res.text();
+  const connections = {};
+  const messages = {};
+  text.split('\n').forEach(line => {
+    if (line.startsWith('whatsapp_connection_status')) {
+      const m = line.match(/org_id="(\d+)"\}\s+(\d+)/);
+      if (m) connections[m[1]] = Number(m[2]);
+    } else if (line.startsWith('whatsapp_messages_total')) {
+      const m = line.match(/org_id="(\d+)",direction="(\w+)"\}\s+(\d+)/);
+      if (m) {
+        messages[m[1]] = messages[m[1]] || {received:0, sent:0};
+        messages[m[1]][m[2]] = Number(m[3]);
+      }
+    }
+  });
+  const connCtx = document.getElementById('connectionChart').getContext('2d');
+  new Chart(connCtx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(connections),
+      datasets: [{
+        label: 'Connected',
+        data: Object.values(connections),
+        backgroundColor: 'rgba(75,192,192,0.5)'
+      }]
+    },
+    options: {scales: {y: {beginAtZero: true, max:1}}}
+  });
+  const labels = Object.keys(messages);
+  const received = labels.map(id => messages[id].received || 0);
+  const sent = labels.map(id => messages[id].sent || 0);
+  const msgCtx = document.getElementById('messageChart').getContext('2d');
+  new Chart(msgCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label: 'Received', data: received, backgroundColor: 'rgba(54,162,235,0.5)'},
+        {label: 'Sent', data: sent, backgroundColor: 'rgba(255,99,132,0.5)'}
+      ]
+    },
+    options: {scales: {y: {beginAtZero: true}}}
+  });
+}
+window.onload = loadMetrics;
+</script>
+</body>
+</html>

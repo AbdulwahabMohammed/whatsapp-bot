@@ -39,9 +39,13 @@
    - يمكن إضافة المهمة التالية في إعدادات خادم Prometheus لجمع المقاييس:
      ```yaml
      scrape_configs:
-       - job_name: 'whatsapp-bot'
-         static_configs:
-           - targets: ['localhost:3001']
-             metrics_path: /metrics
+     - job_name: 'whatsapp-bot'
+        static_configs:
+          - targets: ['localhost:3001']
+            metrics_path: /metrics
      ```
      تأكد من مطابقة المنفذ مع قيمة `ADMIN_PORT` في ملف البيئة.
+
+9. **لوحة الإحصاءات**
+   - تتوفر صفحة `/stats` في واجهة الإدارة لعرض رسوم بيانية لحالة الاتصال وعدد الرسائل باستخدام Chart.js.
+   - تعتمد هذه الصفحة على بيانات المسار `/metrics`، لذلك ينبغي إبقاؤه متاحًا في بيئة الإنتاج.
