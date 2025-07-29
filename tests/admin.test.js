@@ -80,4 +80,10 @@ describe('admin routes', () => {
     await agent.post('/login').send('username=admin&password=secret');
     await agent.get('/stats').expect(200);
   });
+
+  it('serves analytics page', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret');
+    await agent.get('/analytics').expect(200);
+  });
 });
