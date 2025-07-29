@@ -19,16 +19,31 @@ jest.mock('../src/logger', () => ({
   error: jest.fn()
 }));
 
+jest.mock('../src/queue', () => ({
+  messageQueue: { close: jest.fn(async () => {}) },
+  getQueueLength: jest.fn(async () => 0)
+}));
+
 jest.mock('../src/db', () => ({
   query: jest.fn()
 }));
 
 const pool = require('../src/db');
 
-const app = require('../src/admin');
+const { app, startAdminServer, stopAdminServer } = require('../src/admin');
 const { createOrganization } = require('../src/index');
 
 describe('admin routes', () => {
+  let serverInfo;
+
+  beforeAll(() => {
+    serverInfo = startAdminServer();
+  });
+
+  afterAll(async () => {
+    await stopAdminServer(serverInfo.server, serverInfo.intervalId);
+  });
+
   beforeEach(() => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {

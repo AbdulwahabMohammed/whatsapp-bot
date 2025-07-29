@@ -9,7 +9,7 @@ const {
   connectionGauge,
   queueLengthGauge,
 } = require('./metrics');
-const { getQueueLength } = require('./queue');
+const { messageQueue, getQueueLength } = require('./queue');
 const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
@@ -77,7 +77,7 @@ async function broadcastStatus() {
   });
 }
 
-setInterval(broadcastStatus, 5000);
+let statusInterval;
 
 app.get('/login', (req, res) => {
   res.render('login');
@@ -265,9 +265,23 @@ app.get('/usage', requireAdmin, async (req, res) => {
   res.render('usage', { stats: rows });
 });
 
-const port = process.env.ADMIN_PORT || 3001;
-app.listen(port, () => {
-  logger.info(`Admin server listening on ${port}`);
-});
+function startAdminServer() {
+  const port = process.env.ADMIN_PORT || 3001;
+  statusInterval = setInterval(broadcastStatus, 5000);
+  const server = app.listen(port, () => {
+    logger.info(`Admin server listening on ${port}`);
+  });
+  return { server, intervalId: statusInterval };
+}
 
-module.exports = app;
+async function stopAdminServer(server, intervalId) {
+  if (intervalId) clearInterval(intervalId);
+  if (server && server.close) server.close();
+  if (messageQueue && messageQueue.close) await messageQueue.close();
+}
+
+if (require.main === module) {
+  startAdminServer();
+}
+
+module.exports = { app, startAdminServer, stopAdminServer };
