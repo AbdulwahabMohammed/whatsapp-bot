@@ -59,4 +59,10 @@ describe('admin routes', () => {
   it('serves metrics', async () => {
     await request(app).get('/metrics').expect(200);
   });
+
+  it('serves stats page', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret');
+    await agent.get('/stats').expect(200);
+  });
 });

@@ -8,7 +8,7 @@ const qrcode = require('qrcode-terminal');
 const pool = require('./db');
 const { sendMessage } = require('./chat');
 const logger = require('./logger');
-const { connectionGauge } = require('./metrics');
+const { connectionGauge, messageCounter } = require('./metrics');
 require('dotenv').config();
 
 async function startForOrg(org, attempt = 0) {
@@ -68,6 +68,7 @@ async function startForOrg(org, attempt = 0) {
       const sender = msg.key.remoteJid;
       const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
       if (!text) continue;
+      messageCounter.labels(String(org.id), 'received').inc();
 
       try {
         const reply = await sendMessage(org.id, org.assistant_id, sender, text);
@@ -88,6 +89,7 @@ async function startForOrg(org, attempt = 0) {
           );
         }
 
+        messageCounter.labels(String(org.id), 'sent').inc();
         await sock.sendMessage(sender, { text: reply });
       } catch (err) {
         logger.error('Failed to handle message:', err);
