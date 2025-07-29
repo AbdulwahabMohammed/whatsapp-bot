@@ -1,5 +1,19 @@
 const pool = require('./db');
 const openai = require('./openai');
+const logger = require('./logger');
+
+async function checkUsageLimit(orgId) {
+  const limit = parseInt(process.env.DAILY_TOKEN_LIMIT || '0', 10);
+  if (!limit) return;
+  const { rows } = await pool.query(
+    'SELECT COALESCE(SUM(tokens_prompt + tokens_completion),0) AS tokens FROM usage_stats WHERE organization_id=$1 AND created_at >= CURRENT_DATE',
+    [orgId]
+  );
+  const used = parseInt(rows[0].tokens, 10);
+  if (used > limit) {
+    logger.warn(`Organization ${orgId} exceeded daily token limit (${used}/${limit})`);
+  }
+}
 
 // Helper to retrieve a run regardless of SDK version. The OpenAI 5.x SDK
 // expects the run ID as the first argument and an object containing the
@@ -70,6 +84,20 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
     const current = await retrieveRun(threadId, run.id);
     status = current.status;
     attempts++;
+  }
+
+  const completedRun = await retrieveRun(threadId, run.id);
+
+  if (completedRun.usage) {
+    await pool.query(
+      'INSERT INTO usage_stats (organization_id, tokens_prompt, tokens_completion) VALUES ($1,$2,$3)',
+      [
+        orgId,
+        completedRun.usage.prompt_tokens || 0,
+        completedRun.usage.completion_tokens || 0,
+      ]
+    );
+    await checkUsageLimit(orgId);
   }
 
   const messages = await openai.beta.threads.messages.list(threadId, { limit: 1 });

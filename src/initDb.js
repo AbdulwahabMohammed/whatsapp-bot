@@ -60,6 +60,16 @@ async function init() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS usage_stats (
+      id SERIAL PRIMARY KEY,
+      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+      tokens_prompt INTEGER NOT NULL,
+      tokens_completion INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,

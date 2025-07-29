@@ -20,7 +20,7 @@ jest.mock('../src/openai', () => {
         },
         runs: {
           create: jest.fn(async () => ({ id: 'r1', status: 'completed' })),
-          retrieve: jest.fn(),
+          retrieve: jest.fn(async () => ({ status: 'completed', usage: { prompt_tokens: 5, completion_tokens: 7 } })),
         },
       },
     },
@@ -31,7 +31,8 @@ jest.mock('../src/db', () => {
   const mockQuery = jest.fn()
     .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [{ id: 1, thread_id: 't1' }] })
-    .mockResolvedValue({ rows: [{ language: 'ar' }] });
+    .mockResolvedValueOnce({ rows: [{ language: 'ar' }] })
+    .mockResolvedValue({ rows: [] });
   return { query: mockQuery };
 });
 

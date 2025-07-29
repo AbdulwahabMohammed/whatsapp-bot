@@ -208,6 +208,19 @@ app.post('/messages', requireAdmin, async (req, res) => {
   res.render('messageResults', { results: rows, phone, from, to });
 });
 
+app.get('/usage', requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT o.name, DATE(u.created_at) AS date,
+            SUM(u.tokens_prompt) AS tokens_prompt,
+            SUM(u.tokens_completion) AS tokens_completion
+       FROM usage_stats u
+       JOIN organizations o ON u.organization_id=o.id
+      GROUP BY o.name, DATE(u.created_at)
+      ORDER BY date DESC`
+  );
+  res.render('usage', { stats: rows });
+});
+
 const port = process.env.ADMIN_PORT || 3001;
 app.listen(port, () => {
   logger.info(`Admin server listening on ${port}`);
