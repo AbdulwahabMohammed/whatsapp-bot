@@ -3,8 +3,11 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
 } = require('@whiskeysockets/baileys');
+const { downloadMediaMessage, getContentType } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+const path = require('path');
 const pool = require('./db');
 const { messageQueue } = require('./queue');
 const logger = require('./logger');
@@ -66,8 +69,39 @@ async function startForOrg(org, attempt = 0) {
     for (const msg of messages) {
       if (!msg.message || msg.key.fromMe) continue;
       const sender = msg.key.remoteJid;
-      const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
-      if (!text) continue;
+      let text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        msg.message.imageMessage?.caption ||
+        msg.message.documentMessage?.caption;
+
+      const messageType = getContentType(msg.message);
+      let attachmentType;
+      let attachmentPath;
+      if (messageType === 'imageMessage' || messageType === 'documentMessage') {
+        try {
+          const buffer = await downloadMediaMessage(
+            msg,
+            'buffer',
+            {},
+            { logger, reuploadRequest: sock.updateMediaMessage }
+          );
+          fs.mkdirSync(path.join(__dirname, '../uploads'), { recursive: true });
+          const ext =
+            messageType === 'imageMessage'
+              ? '.jpg'
+              : path.extname(msg.message.documentMessage?.fileName || '.bin');
+          const filename = `${Date.now()}-${msg.key.id}${ext}`;
+          const fullPath = path.join(__dirname, '../uploads', filename);
+          fs.writeFileSync(fullPath, buffer);
+          attachmentType = messageType === 'imageMessage' ? 'image' : 'document';
+          attachmentPath = path.join('uploads', filename);
+        } catch (e) {
+          logger.error('Failed to download attachment:', e);
+        }
+      }
+
+      if (!text && !attachmentPath) continue;
       messageCounter.labels(String(org.id), 'received').inc();
 
       try {
@@ -76,6 +110,8 @@ async function startForOrg(org, attempt = 0) {
           assistantId: org.assistant_id,
           sender,
           text,
+          attachmentType,
+          attachmentPath,
         });
       } catch (err) {
         logger.error('Failed to queue message:', err);

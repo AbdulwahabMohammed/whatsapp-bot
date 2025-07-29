@@ -25,6 +25,7 @@ const wsClients = new Set();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'secret',
@@ -205,7 +206,7 @@ app.post('/messages', requireAdmin, async (req, res) => {
     params.push(to);
   }
   let query =
-    'SELECT m.sender, m.text, m.created_at, c.customer_phone, o.name AS organization ' +
+    'SELECT m.sender, m.text, m.attachment_type, m.attachment_path, m.created_at, c.customer_phone, o.name AS organization ' +
     'FROM messages m JOIN conversations c ON m.conversation_id=c.id ' +
     'JOIN organizations o ON c.organization_id=o.id';
   if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
@@ -229,6 +230,7 @@ app.post('/messages', requireAdmin, async (req, res) => {
         { id: 'customer_phone', title: 'Phone' },
         { id: 'sender', title: 'Sender' },
         { id: 'text', title: 'Text' },
+        { id: 'attachment_path', title: 'Attachment' },
       ],
     });
     const csv = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(rows);
@@ -243,7 +245,8 @@ app.post('/messages', requireAdmin, async (req, res) => {
     res.attachment('messages.pdf');
     doc.pipe(res);
     rows.forEach(r => {
-      doc.text(`${r.created_at.toISOString()} | ${r.organization} | ${r.customer_phone} | ${r.sender} | ${r.text}`);
+      const attachment = r.attachment_path ? ` | ${r.attachment_path}` : '';
+      doc.text(`${r.created_at.toISOString()} | ${r.organization} | ${r.customer_phone} | ${r.sender} | ${r.text}${attachment}`);
       doc.moveDown();
     });
     return doc.end();

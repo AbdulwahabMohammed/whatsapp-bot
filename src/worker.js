@@ -10,6 +10,7 @@ const { sendMessage } = require('./chat');
 const pool = require('./db');
 const logger = require('./logger');
 const openai = require('./openai');
+const path = require('path');
 const { connectionGauge, messageCounter } = require('./metrics');
 require('dotenv').config();
 
@@ -69,7 +70,16 @@ async function startForOrg(org, attempt = 0) {
 const worker = new Worker(
   'messages',
   async job => {
-    const { orgId, assistantId, sender, text } = job.data;
+    const {
+      orgId,
+      assistantId,
+      sender,
+      text,
+      attachmentType,
+      attachmentPath,
+      replyAttachmentType,
+      replyAttachmentPath,
+    } = job.data;
     const sock = sockets[orgId];
     if (!sock) {
       logger.error(`No WhatsApp connection for org ${orgId}`);
@@ -83,8 +93,14 @@ const worker = new Worker(
       );
       const conversationId = rows[0]?.id;
       if (conversationId) {
-        await pool.query('INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)', [conversationId, 'user', text]);
-        await pool.query('INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)', [conversationId, 'assistant', reply]);
+        await pool.query(
+          'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
+          [conversationId, 'user', text, attachmentType, attachmentPath]
+        );
+        await pool.query(
+          'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
+          [conversationId, 'assistant', reply, replyAttachmentType, replyAttachmentPath]
+        );
 
         const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM messages WHERE conversation_id=$1', [conversationId]);
         const count = parseInt(countRows[0].count, 10);
@@ -112,7 +128,21 @@ const worker = new Worker(
         }
       }
       messageCounter.labels(String(orgId), 'sent').inc();
-      await sock.sendMessage(sender, { text: reply });
+      let content = { text: reply };
+      if (replyAttachmentPath) {
+        if (replyAttachmentType === 'image') {
+          content = {
+            image: { url: path.join(__dirname, '..', replyAttachmentPath) },
+            caption: reply,
+          };
+        } else if (replyAttachmentType === 'document') {
+          content = {
+            document: { url: path.join(__dirname, '..', replyAttachmentPath) },
+            caption: reply,
+          };
+        }
+      }
+      await sock.sendMessage(sender, content);
     } catch (err) {
       logger.error('Failed to process job:', err);
     }

@@ -46,6 +46,26 @@ describe('worker message flow', () => {
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', { text: 'reply' });
   });
 
+  test('sends attachment if provided', async () => {
+    require('../src/chat').sendMessage.mockResolvedValue('file');
+    require('../src/worker');
+    await new Promise(r => setImmediate(r));
+    await handler({
+      data: {
+        orgId: 1,
+        assistantId: 'a1',
+        sender: '123',
+        text: 'hi',
+        replyAttachmentType: 'image',
+        replyAttachmentPath: 'uploads/pic.jpg',
+      },
+    });
+    expect(mockSock.sendMessage).toHaveBeenCalledWith('123', {
+      image: { url: expect.stringContaining('uploads/pic.jpg') },
+      caption: 'file',
+    });
+  });
+
   test('logs error on OpenAI failure', async () => {
     const logger = require('../src/logger');
     require('../src/chat').sendMessage.mockRejectedValue(new Error('fail'));
