@@ -47,8 +47,12 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
     content: text,
   });
 
+  const { rows } = await pool.query('SELECT language FROM organizations WHERE id=$1', [orgId]);
+  const lang = rows[0]?.language || 'ar';
+
   const run = await openai.beta.threads.runs.create(threadId, {
     assistant_id: assistantId,
+    instructions: `Please respond in ${lang}`,
   });
 
   let status = run.status;

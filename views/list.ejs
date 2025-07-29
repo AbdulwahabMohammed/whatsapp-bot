@@ -10,7 +10,7 @@
 <ul>
 <% orgs.forEach(function(o){ %>
   <li>
-    <%= o.name %> (<%= o.phone %>)
+    <%= o.name %> (<%= o.phone %>, <%= o.language %>)
     <form action="/org/<%= o.id %>/assistant" method="post" style="display:inline;">
       <button type="submit">Create Assistant</button>
     </form>
