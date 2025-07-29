@@ -92,6 +92,14 @@ async function init() {
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'"
   );
 
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)'
+  );
+
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_conversations_customer_phone ON conversations(customer_phone)'
+  );
+
   if (process.env.ADMIN_PASSWORD) {
     const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
     await pool.query(
