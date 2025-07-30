@@ -250,6 +250,11 @@ app.post('/users/:id/role', requireAdmin, async (req, res) => {
   res.redirect('/users');
 });
 
+app.post('/users/:id/disable-2fa', requireAdmin, async (req, res) => {
+  await pool.query('UPDATE users SET totp_secret=NULL WHERE id=$1', [req.params.id]);
+  res.redirect('/users');
+});
+
 app.get('/schedule/new', requireEditor, async (req, res) => {
   const orgs = await listOrganizations();
   res.render('newSchedule', { orgs });
