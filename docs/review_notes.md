@@ -645,3 +645,165 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #95)
+**Title**: Fix alert message rendering
+
+**Branch**: `codex/modify-alert-message-rendering-method` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 3 🔵🔵🔵⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>Security concerns</strong><br><br>
+
+<strong>XSS vulnerability:</strong><br> The change in `views/partials/header.ejs` from `<%= alert.message %>` to `<%- alert.message %>` enables raw HTML rendering of alert messages. This creates a potential XSS vulnerability if `alert.message` contains untrusted user input or malicious HTML/JavaScript code. The EJS `<%- %>` syntax bypasses HTML escaping, which is the opposite of what should be done for security.</td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/95/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR37-R37'><strong>Security Risk</strong></a>
+
+The change from `<%= alert.message %>` to `<%- alert.message %>` allows raw HTML rendering, which could introduce XSS vulnerabilities if alert messages contain untrusted user input. This contradicts the PR's stated goal of preventing XSS vulnerabilities.
+</summary>
+
+```txt
+<%- alert.message %>
+<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/95/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R21-R33'><strong>Error Handling</strong></a>
+
+The code assumes the response will always be successful and contain a message property. There's no error handling for failed requests or missing message fields, which could cause runtime errors.
+</summary>
+
+```txt
+const container = document.getElementById('uploadAlert');
+container.innerHTML = '';
+const div = document.createElement('div');
+div.className = 'alert alert-success alert-dismissible fade show';
+div.setAttribute('role', 'alert');
+div.textContent = result.message;
+const btn = document.createElement('button');
+btn.type = 'button';
+btn.className = 'btn-close';
+btn.setAttribute('data-bs-dismiss', 'alert');
+btn.setAttribute('aria-label', 'Close');
+div.appendChild(btn);
+container.appendChild(div);
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/95#issuecomment-3135087994)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>Security</td>
+<td>
+
+
+
+<details><summary>Prevent XSS vulnerability</summary>
+
+___
+
+**Using <code><%- %></code> renders raw HTML which creates an XSS vulnerability if <br><code>alert.message</code> contains user-controlled content. Consider sanitizing the message <br>or using <code><%= %></code> with proper HTML encoding.**
+
+[views/partials/header.ejs [37]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/95/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR37-R37)
+
+```diff
+-<%- alert.message %>
++<%= alert.message %>
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 10</summary>
+
+__
+
+Why: The suggestion correctly identifies a critical XSS vulnerability introduced by the PR's change from `<%=` to `<%-`, which allows unescaped HTML rendering.
+
+
+</details></details></td><td align=center>High
+
+</td></tr><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Add error handling</summary>
+
+___
+
+**The code assumes the fetch request will always succeed and return valid JSON. <br>Add error handling to catch network failures and invalid JSON responses.**
+
+[views/upload.ejs [15-20]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/95/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R15-R20)
+
+```diff
+-const res = await fetch(form.action, {
+-  method: 'POST',
+-  headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+-  body: data
+-});
+-const result = await res.json();
++try {
++  const res = await fetch(form.action, {
++    method: 'POST',
++    headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
++    body: data
++  });
++  if (!res.ok) throw new Error(`HTTP ${res.status}`);
++  const result = await res.json();
++} catch (error) {
++  console.error('Upload failed:', error);
++  // Handle error appropriately
++}
+```
+
+
+
+`[To ensure code accuracy, apply this suggestion manually]`
+
+
+<details><summary>Suggestion importance[1-10]: 8</summary>
+
+__
+
+Why: The suggestion correctly points out the lack of error handling for the `fetch` call, which could lead to unhandled promise rejections, and proposes a robust solution using `try...catch` and checking `res.ok`.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/95#issuecomment-3135089155)
+
+---
+
