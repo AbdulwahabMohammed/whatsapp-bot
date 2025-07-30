@@ -18,6 +18,9 @@
       </select>
       <button type="submit">Update</button>
     </form>
+    <form action="/users/<%= u.id %>/disable-2fa" method="post" style="display:inline;">
+      <button type="submit">Disable 2FA</button>
+    </form>
   </li>
 <% }); %>
 </ul>

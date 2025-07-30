@@ -143,4 +143,11 @@ describe('admin routes', () => {
     await agent.post('/faq/1/delete').expect(302);
     expect(pool.query).toHaveBeenCalledWith('DELETE FROM faq_suggestions WHERE id=$1', ['1']);
   });
+
+  it('disables 2FA for user', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent.post('/users/1/disable-2fa').expect(302);
+    expect(pool.query).toHaveBeenCalledWith('UPDATE users SET totp_secret=NULL WHERE id=$1', ['1']);
+  });
 });
