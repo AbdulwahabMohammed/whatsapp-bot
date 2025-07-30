@@ -157,15 +157,20 @@ app.get('/profile', requireLogin, async (req, res) => {
 });
 
 app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
-  const { rows } = await pool.query(
-    'SELECT totp_secret FROM users WHERE username=$1',
-    [req.session.user]
-  );
-  if (rows[0]?.totp_secret) return res.redirect('/profile');
-  const secret = speakeasy.generateSecret({ name: `whatsapp-bot:${req.session.user}` });
-  req.session.temp_secret = secret.base32;
-  const qr = await qrcode.toDataURL(secret.otpauth_url);
-  res.render('enable2fa', { qr, secret: secret.base32 });
+  try {
+    const { rows } = await pool.query(
+      'SELECT totp_secret FROM users WHERE username=$1',
+      [req.session.user]
+    );
+    if (rows[0]?.totp_secret) return res.redirect('/profile');
+    const secret = speakeasy.generateSecret({ name: `whatsapp-bot:${req.session.user}` });
+    req.session.temp_secret = secret.base32;
+    const qr = await qrcode.toDataURL(secret.otpauth_url);
+    res.render('enable2fa', { qr, secret: secret.base32 });
+  } catch (err) {
+    logger.error(err.message);
+    res.status(500).send('Error setting up 2FA');
+  }
 });
 
 app.post('/profile/enable-2fa', requireLogin, async (req, res) => {
