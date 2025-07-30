@@ -2,7 +2,7 @@ const pool = require('./db');
 const logger = require('./logger');
 const bcrypt = require('bcrypt');
 
-async function init() {
+async function init () {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS organizations (
       id SERIAL PRIMARY KEY,

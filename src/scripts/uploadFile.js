@@ -4,7 +4,7 @@ const openai = require('../openai');
 const pool = require('../db');
 const logger = require('../logger');
 
-async function upload(orgId, filePath) {
+async function upload (orgId, filePath) {
   if (!orgId || !filePath) {
     throw new Error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
   }
@@ -20,7 +20,7 @@ async function upload(orgId, filePath) {
 
   const file = await openai.files.create({
     file: fs.createReadStream(filePath),
-    purpose: 'assistants',
+    purpose: 'assistants'
   });
 
   const vectorStoresApi =
@@ -40,7 +40,7 @@ async function upload(orgId, filePath) {
 
   if (!vectorStoreId) {
     const vectorStore = await vectorStoresApi.create({
-      name: `org-${orgId}-store`,
+      name: `org-${orgId}-store`
     });
     vectorStoreId = vectorStore.id;
     await pool.query('UPDATE organizations SET vector_store_id=$1 WHERE id=$2', [vectorStoreId, orgId]);
@@ -48,12 +48,12 @@ async function upload(orgId, filePath) {
 
   if (!attachedStores.includes(vectorStoreId)) {
     await openai.beta.assistants.update(org.assistant_id, {
-      tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } },
+      tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } }
     });
   }
 
   await vectorStoresApi.fileBatches.createAndPoll(vectorStoreId, {
-    file_ids: [file.id],
+    file_ids: [file.id]
   });
 
   await pool.query(
@@ -64,7 +64,7 @@ async function upload(orgId, filePath) {
   logger.info(`File uploaded and attached: ${file.id}`);
 }
 
-async function main() {
+async function main () {
   const orgId = process.argv[2];
   const filePath = process.argv[3];
   await upload(orgId, filePath);

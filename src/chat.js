@@ -2,7 +2,7 @@ const pool = require('./db');
 const openai = require('./openai');
 const logger = require('./logger');
 
-async function checkUsageLimit(orgId) {
+async function checkUsageLimit (orgId) {
   const limit = parseInt(process.env.DAILY_TOKEN_LIMIT || '0', 10);
   if (!limit) return;
   const { rows } = await pool.query(
@@ -18,7 +18,7 @@ async function checkUsageLimit(orgId) {
 // Helper to retrieve a run regardless of SDK version. The OpenAI 5.x SDK
 // expects the run ID as the first argument and an object containing the
 // `thread_id` as the second argument. Older versions used the opposite order.
-async function retrieveRun(threadId, runId) {
+async function retrieveRun (threadId, runId) {
   if (!threadId) {
     throw new Error('threadId is required to retrieve a run');
   }
@@ -30,7 +30,7 @@ async function retrieveRun(threadId, runId) {
   }
 }
 
-async function getOrCreateConversation(orgId, customerPhone) {
+async function getOrCreateConversation (orgId, customerPhone) {
   const { rows } = await pool.query(
     'SELECT id, thread_id, escalated, detected_language, summary FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
     [orgId, customerPhone]
@@ -45,7 +45,7 @@ async function getOrCreateConversation(orgId, customerPhone) {
   return insert.rows[0];
 }
 
-async function sendMessage(orgId, assistantId, customerPhone, text) {
+async function sendMessage (orgId, assistantId, customerPhone, text) {
   const conv = await getOrCreateConversation(orgId, customerPhone);
 
   if (conv.escalated) {
@@ -82,7 +82,7 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
 
   await openai.beta.threads.messages.create(threadId, {
     role: 'user',
-    content: text,
+    content: text
   });
 
   const { rows } = await pool.query('SELECT language FROM organizations WHERE id=$1', [orgId]);
@@ -91,7 +91,7 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
 
   const run = await openai.beta.threads.runs.create(threadId, {
     assistant_id: assistantId,
-    instructions: `Please respond in ${lang}`,
+    instructions: `Please respond in ${lang}`
   });
 
   let status = run.status;
@@ -104,7 +104,7 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
     if (attempts >= MAX_RETRIES) {
       throw new Error('Run ' + run.id + ' did not complete within 60 seconds');
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const current = await retrieveRun(threadId, run.id);
     status = current.status;
@@ -119,7 +119,7 @@ async function sendMessage(orgId, assistantId, customerPhone, text) {
       [
         orgId,
         completedRun.usage.prompt_tokens || 0,
-        completedRun.usage.completion_tokens || 0,
+        completedRun.usage.completion_tokens || 0
       ]
     );
     await checkUsageLimit(orgId);

@@ -7,7 +7,7 @@ jest.mock('bullmq', () => {
   return {
     Worker: jest.fn((name, fn) => { __handlers[name] = fn; }),
     Queue: jest.fn(() => ({ add: jest.fn(), getWaitingCount: jest.fn() })),
-    __handlers,
+    __handlers
   };
 });
 
@@ -56,7 +56,7 @@ describe('worker message flow', () => {
   test('sends reply via WhatsApp', async () => {
     require('../src/chat').sendMessage.mockResolvedValue('reply');
     require('../src/worker');
-    await new Promise(r => setImmediate(r));
+    await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(require('../src/chat').sendMessage).toHaveBeenCalledWith(1, 'a1', '123', 'hi');
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', { text: 'reply' });
@@ -65,7 +65,7 @@ describe('worker message flow', () => {
   test('sends attachment if provided', async () => {
     require('../src/chat').sendMessage.mockResolvedValue('file');
     require('../src/worker');
-    await new Promise(r => setImmediate(r));
+    await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({
       data: {
         orgId: 1,
@@ -73,13 +73,13 @@ describe('worker message flow', () => {
         sender: '123',
         text: 'hi',
         replyAttachmentType: 'image',
-        replyAttachmentPath: 'uploads/pic.jpg',
-      },
+        replyAttachmentPath: 'uploads/pic.jpg'
+      }
     });
     const attachmentPath = path.join('uploads', 'pic.jpg');
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', {
       image: { url: expect.stringContaining(attachmentPath) },
-      caption: 'file',
+      caption: 'file'
     });
   });
 
@@ -87,7 +87,7 @@ describe('worker message flow', () => {
     const logger = require('../src/logger');
     require('../src/chat').sendMessage.mockRejectedValue(new Error('fail'));
     require('../src/worker');
-    await new Promise(r => setImmediate(r));
+    await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(mockSock.sendMessage).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe('worker message flow', () => {
     require('../src/chat').sendMessage.mockResolvedValue('reply');
     process.env.WEBHOOK_URL = 'http://hook';
     require('../src/worker');
-    await new Promise(r => setImmediate(r));
+    await new Promise(resolve => setImmediate(resolve));
     const ts = 111;
     await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi', receivedAt: ts } });
     expect(global.fetch).toHaveBeenCalledTimes(2);
@@ -108,7 +108,7 @@ describe('worker message flow', () => {
   test('bulk worker sends to each phone', async () => {
     const db = require('../src/db');
     require('../src/worker');
-    await new Promise(r => setImmediate(r));
+    await new Promise(resolve => setImmediate(resolve));
     db.query.mockResolvedValue({ rows: [{ id: 1 }] });
     await handlers.bulkMessages({ data: { orgId: 1, phones: ['1', '2'], text: 'hi' } });
     expect(mockSock.sendMessage).toHaveBeenCalledTimes(2);

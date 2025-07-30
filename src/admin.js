@@ -7,7 +7,7 @@ const {
   client,
   requestCounter,
   connectionGauge,
-  queueLengthGauge,
+  queueLengthGauge
 } = require('./metrics');
 const { messageQueue, bulkQueue, getQueueLength } = require('./queue');
 const { createAssistant } = require('./assistant');
@@ -35,7 +35,7 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: false
   })
 );
 
@@ -50,17 +50,17 @@ app.use((req, res, next) => {
   next();
 });
 
-function requireAdmin(req, res, next) {
+function requireAdmin (req, res, next) {
   if (req.session.role === 'admin') return next();
   res.status(403).send('Forbidden');
 }
 
-function requireEditor(req, res, next) {
+function requireEditor (req, res, next) {
   if (req.session.role === 'admin' || req.session.role === 'editor') return next();
   res.status(403).send('Forbidden');
 }
 
-function requireLogin(req, res, next) {
+function requireLogin (req, res, next) {
   if (req.session.user) return next();
   res.redirect('/login');
 }
@@ -85,7 +85,7 @@ app.ws('/ws', (ws, _req) => {
   ws.on('close', () => wsClients.delete(ws));
 });
 
-async function broadcastStatus() {
+async function broadcastStatus () {
   const queue = await getQueueLength();
   queueLengthGauge.set(queue);
   const conn = {};
@@ -167,7 +167,7 @@ app.get('/profile', requireLogin, async (req, res) => {
     res.render('profile', {
       username: req.session.user,
       role: user.role,
-      enabled: !!user.totp_secret,
+      enabled: !!user.totp_secret
     });
   } catch (err) {
     logger.error('Profile loading failed:', err);
@@ -290,7 +290,7 @@ app.get('/org/:id/hours', requireEditor, async (req, res) => {
     orgId: req.params.id,
     name: org.name,
     start: org.working_hours_start || '',
-    end: org.working_hours_end || '',
+    end: org.working_hours_end || ''
   });
 });
 
@@ -370,7 +370,7 @@ app.post('/broadcast', requireEditor, async (req, res) => {
     await bulkQueue.add('broadcast', {
       orgId: Number(organization_id),
       text,
-      phones: list,
+      phones: list
     });
   }
   res.redirect('/');
@@ -422,8 +422,8 @@ app.post('/messages', requireAdmin, async (req, res) => {
         { id: 'customer_phone', title: 'Phone' },
         { id: 'sender', title: 'Sender' },
         { id: 'text', title: 'Text' },
-        { id: 'attachment_path', title: 'Attachment' },
-      ],
+        { id: 'attachment_path', title: 'Attachment' }
+      ]
     });
     const csv = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(rows);
     res.setHeader('Content-Type', 'text/csv');
@@ -495,7 +495,7 @@ app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
   res.redirect('/faq');
 });
 
-function startAdminServer() {
+function startAdminServer () {
   if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'secret') {
     logger.error('SESSION_SECRET must be set and not equal to "secret"');
     process.exit(1);
@@ -508,7 +508,7 @@ function startAdminServer() {
   return { server, intervalId: statusInterval };
 }
 
-async function stopAdminServer(server, intervalId) {
+async function stopAdminServer (server, intervalId) {
   if (intervalId) clearInterval(intervalId);
   if (server && server.close) server.close();
   if (messageQueue && messageQueue.close) await messageQueue.close();

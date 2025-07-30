@@ -3,7 +3,7 @@ const pool = require('./db');
 const { messageQueue } = require('./queue');
 const logger = require('./logger');
 
-async function dispatchScheduled() {
+async function dispatchScheduled () {
   await pool.query(
     "DELETE FROM scheduled_messages WHERE send_at < NOW() - INTERVAL '1 day'"
   );
@@ -15,7 +15,7 @@ async function dispatchScheduled() {
       orgId: row.organization_id,
       sender: row.phone,
       text: row.text,
-      receivedAt: Date.now(),
+      receivedAt: Date.now()
     });
   }
   if (rows.length) {
@@ -25,12 +25,12 @@ async function dispatchScheduled() {
 
 let task;
 
-function startScheduler() {
+function startScheduler () {
   task = cron.schedule('* * * * *', dispatchScheduled);
   return task;
 }
 
-function stopScheduler() {
+function stopScheduler () {
   if (task) {
     task.stop();
     task = null;

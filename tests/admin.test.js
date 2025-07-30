@@ -213,7 +213,7 @@ describe('admin routes', () => {
     expect(bulkQueue.add).toHaveBeenCalledWith('broadcast', {
       orgId: 1,
       text: 'hi',
-      phones: ['1', '2'],
+      phones: ['1', '2']
     });
   });
 

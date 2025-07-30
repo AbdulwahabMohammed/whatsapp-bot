@@ -7,7 +7,7 @@ const logger = require('./logger');
 /**
  * Create an assistant for an organization.
  */
-async function createAssistant(organizationId) {
+async function createAssistant (organizationId) {
   const orgRes = await pool.query(
     'SELECT assistant_id, instructions FROM organizations WHERE id=$1',
     [organizationId]
@@ -19,7 +19,7 @@ async function createAssistant(organizationId) {
 
   if (org?.assistant_id) {
     const assistant = await openai.beta.assistants.update(org.assistant_id, {
-      instructions,
+      instructions
     });
     logger.info(`Assistant updated: ${assistant.id}`);
     return assistant;
@@ -31,7 +31,7 @@ async function createAssistant(organizationId) {
     // Use file_search tool to allow the assistant to access uploaded reference
     // documents for this organization.
     tools: [{ type: 'file_search' }],
-    model: 'gpt-4o',
+    model: 'gpt-4o'
   });
 
   await pool.query('UPDATE organizations SET assistant_id=$1 WHERE id=$2', [assistant.id, organizationId]);
@@ -43,7 +43,7 @@ async function createAssistant(organizationId) {
 /**
  * Upload a file and attach it to the organization assistant.
  */
-async function uploadFile(organizationId, filePath) {
+async function uploadFile (organizationId, filePath) {
   const orgRes = await pool.query('SELECT assistant_id, vector_store_id FROM organizations WHERE id=$1', [organizationId]);
   const org = orgRes.rows[0];
   if (!org) {
@@ -55,7 +55,7 @@ async function uploadFile(organizationId, filePath) {
 
   const file = await openai.files.create({
     file: fs.createReadStream(filePath),
-    purpose: 'assistants',
+    purpose: 'assistants'
   });
 
   // Determine which vector store API is available in this SDK version.
@@ -77,7 +77,7 @@ async function uploadFile(organizationId, filePath) {
 
   if (!vectorStoreId) {
     const vectorStore = await vectorStoresApi.create({
-      name: `org-${organizationId}-store`,
+      name: `org-${organizationId}-store`
     });
     vectorStoreId = vectorStore.id;
     await pool.query('UPDATE organizations SET vector_store_id=$1 WHERE id=$2', [vectorStoreId, organizationId]);
@@ -85,13 +85,13 @@ async function uploadFile(organizationId, filePath) {
 
   if (!attachedStores.includes(vectorStoreId)) {
     await openai.beta.assistants.update(org.assistant_id, {
-      tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } },
+      tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } }
     });
   }
 
   // Upload the file to the vector store and wait for indexing
   await vectorStoresApi.fileBatches.createAndPoll(vectorStoreId, {
-    file_ids: [file.id],
+    file_ids: [file.id]
   });
 
   await pool.query(
