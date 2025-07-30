@@ -321,7 +321,7 @@ app.post('/messages', requireAdmin, async (req, res) => {
   query += ' ORDER BY m.created_at DESC';
   const { rows } = await pool.query(query, params);
 
-  let sumQuery = 'SELECT id, customer_phone, summary FROM conversations WHERE summary IS NOT NULL';
+  let sumQuery = 'SELECT id, customer_phone, summary, escalated FROM conversations WHERE summary IS NOT NULL';
   const sumParams = [];
   if (phone) {
     sumQuery += ' AND customer_phone=$1';
@@ -361,6 +361,11 @@ app.post('/messages', requireAdmin, async (req, res) => {
   }
 
   res.render('messageResults', { results: rows, summaries, phone, from, to });
+});
+
+app.post('/conversations/:id/escalate', requireAdmin, async (req, res) => {
+  await pool.query('UPDATE conversations SET escalated=TRUE WHERE id=$1', [req.params.id]);
+  res.redirect('back');
 });
 
 app.get('/usage', requireAdmin, async (req, res) => {

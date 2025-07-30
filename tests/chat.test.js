@@ -35,7 +35,7 @@ jest.mock('../src/openai', () => {
 jest.mock('../src/db', () => {
   const mockQuery = jest.fn()
     .mockResolvedValueOnce({ rows: [] })
-    .mockResolvedValueOnce({ rows: [{ id: 1, thread_id: 't1', detected_language: null }] })
+    .mockResolvedValueOnce({ rows: [{ id: 1, thread_id: 't1', escalated: false, detected_language: null }] })
     .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [{ language: 'ar' }] })
     .mockResolvedValue({ rows: [] });

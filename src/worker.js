@@ -29,7 +29,7 @@ function withinWorkingHours(start, end) {
 
 async function getOrCreateConversation(orgId, phone) {
   const { rows } = await pool.query(
-    'SELECT id, thread_id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+    'SELECT id, thread_id, escalated FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
     [orgId, phone]
   );
   if (rows[0]) return rows[0];
@@ -133,8 +133,21 @@ const worker = new Worker(
         [orgId]
       );
       const org = orgRows[0] || {};
+      const conv = await getOrCreateConversation(orgId, sender);
+      if (conv.escalated) {
+        await pool.query(
+          'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
+          [conv.id, 'user', text, attachmentType, attachmentPath]
+        );
+        await postWebhook({
+          sender,
+          text,
+          timestamp: job.data.receivedAt || Date.now(),
+        });
+        return;
+      }
+
       if (!withinWorkingHours(org.working_hours_start, org.working_hours_end)) {
-        const conv = await getOrCreateConversation(orgId, sender);
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
           [conv.id, 'user', text, attachmentType, attachmentPath]
@@ -167,11 +180,7 @@ const worker = new Worker(
           [sender, text]
         );
       }
-      const { rows } = await pool.query(
-        'SELECT id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
-        [orgId, sender]
-      );
-      const conversationId = rows[0]?.id;
+      const conversationId = conv.id;
       if (conversationId) {
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',

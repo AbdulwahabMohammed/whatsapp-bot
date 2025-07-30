@@ -32,7 +32,7 @@ async function retrieveRun(threadId, runId) {
 
 async function getOrCreateConversation(orgId, customerPhone) {
   const { rows } = await pool.query(
-    'SELECT id, thread_id, detected_language, summary FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+    'SELECT id, thread_id, escalated, detected_language, summary FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
     [orgId, customerPhone]
   );
   if (rows[0]) return rows[0];
@@ -47,6 +47,10 @@ async function getOrCreateConversation(orgId, customerPhone) {
 
 async function sendMessage(orgId, assistantId, customerPhone, text) {
   const conv = await getOrCreateConversation(orgId, customerPhone);
+
+  if (conv.escalated) {
+    return null;
+  }
 
   // Ensure there is always a valid thread attached before continuing
   let threadId = conv.thread_id;
