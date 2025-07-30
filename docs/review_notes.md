@@ -1516,3 +1516,78 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #1)
+**Title**: Validate OpenAI key format
+
+**Branch**: `codex/update-key-validation-in-openai.js` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>PR contains tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/1/files#diff-0988a07dae73d97c2885e82effe13ef6fd92dfd04f55c446a4c3ca7324db75e6R20-R20'><strong>Logic Fix</strong></a>
+
+The validation logic change from AND to OR condition fixes a critical bug where valid keys starting with 'sk-' but shorter than 40 characters would incorrectly pass validation. Verify this change correctly rejects all invalid key formats.
+</summary>
+
+```javascript
+if (!key || !key.startsWith('sk-') || key.length < 40) {
+  logger.error('OPENAI_API_KEY is missing or invalid');
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/1/files#diff-7f348516a9758eca58203fced3ff8c1c4b8bf4a7a9e6a76d24e1f6d5fe8228c1R275-R288'><strong>Test Coverage</strong></a>
+
+The new test case validates invalid key format handling but uses a generic 'invalid-key' string. Consider testing edge cases like keys that start with 'sk-' but are too short, or keys with correct length but wrong prefix.
+</summary>
+
+```javascript
+it('exits if OPENAI_API_KEY is invalid', () => {
+  jest.resetModules();
+  const logger = require('../src/logger');
+  const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+    throw new Error('exit');
+  });
+  process.env.OPENAI_API_KEY = 'invalid-key';
+  logger.error.mockClear();
+  expect(() => require('../src/openai')).toThrow('exit');
+  expect(exitSpy).toHaveBeenCalledWith(1);
+  expect(logger.error).toHaveBeenCalled();
+  exitSpy.mockRestore();
+  process.env.OPENAI_API_KEY = 'sk-test-valid-key';
+});
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/1#issuecomment-3135528306)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+No code suggestions found for the PR.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/1#issuecomment-3135529465)
+
+---
+
