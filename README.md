@@ -1,5 +1,9 @@
 # بوت واتساب الذكي
 
+### حالة CI
+يتم تشغيل الاختبارات تلقائيًا عبر GitHub Actions على كل `push` أو `pull_request`.
+[![Node.js CI](https://github.com/OWNER/REPO/actions/workflows/node-test.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/node-test.yml)
+
 ## مقدمة
 هذا المشروع يوفر هيكلًا لبناء بوت خدمة عملاء على واتساب، معتمد على OpenAI Assistants API.
 يهدف البوت إلى إدارة المحادثات والرد على استفسارات العملاء اعتمادًا على الملفات المرجعية الخاصة بكل منشأة.
