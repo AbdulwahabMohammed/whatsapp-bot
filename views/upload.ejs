@@ -20,9 +20,21 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
       body: data
     });
-    const result = await res.json();
     if (!res.ok) {
-      throw new Error(result.message || 'Upload failed');
+      const text = await res.text();
+      let message = text;
+      try {
+        const data = JSON.parse(text);
+        message = data.message || message;
+      } catch {}
+      throw new Error(message || 'Upload failed');
+    }
+    let result;
+    const type = res.headers.get('content-type') || '';
+    if (type.includes('application/json')) {
+      result = await res.json();
+    } else {
+      result = { message: await res.text() };
     }
     const div = document.createElement('div');
     div.className = 'alert alert-success alert-dismissible fade show';
