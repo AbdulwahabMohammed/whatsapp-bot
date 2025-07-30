@@ -30,7 +30,12 @@ jobs:
               pull_number: prNumber
             });
 
-            const qodoComments = comments.filter(c => c.user.login.includes('qodo'));
+            const qodoComments = comments.filter(c => c.user.login === 'qodo-merge-pro');
+            if (qodoComments.length === 0) {
+              console.log("No qodo-merge-pro comments found.");
+              return;
+            }
+
             let content = `# Qodo Review Comments (PR #${prNumber})\n\n`;
 
             qodoComments.forEach((c, i) => {
