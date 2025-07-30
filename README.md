@@ -26,6 +26,9 @@
    يجب أن تكون قيمة `SESSION_SECRET` فريدة وغير "secret" حتى يعمل الخادم في بيئة الإنتاج.
    يمكن كذلك تعديل `SUMMARY_MESSAGE_LIMIT` لتحديد عدد الرسائل قبل تلخيص المحادثة،
    وضبط `LOG_LEVEL` لتغيير مستوى السجلات.
+   **ملاحظة:** تأكد من أن المتغير `OPENAI_API_KEY` يحتوي على مفتاح صحيح من
+   [منصة OpenAI](https://platform.openai.com/account/api-keys) قبل تشغيل أي أوامر
+   إدارية مثل `npm run admin`، وتجنب استخدام القيم التجريبية أو `your-openai-key`.
 2. تثبيت الاعتمادات:
    ```bash
    npm install
