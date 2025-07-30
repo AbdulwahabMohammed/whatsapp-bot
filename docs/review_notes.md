@@ -1591,3 +1591,151 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #2)
+**Title**: Fix lint issues
+
+**Branch**: `codex/update-eslint-configuration-for-lint-pass` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/2/files#diff-e27bad8c3f971045f5abe2b4346053b1c7f930ad2a87fbd891468a5955d0bde7R53-R66'><strong>Spacing Issue</strong></a>
+
+Function declarations have inconsistent spacing between function name and parentheses. Some functions use space before parentheses while others don't, which may not align with the enforced semicolon style rules.
+</summary>
+
+```javascript
+function requireAdmin (req, res, next) {
+  if (req.session.role === 'admin') return next();
+  res.status(403).send('Forbidden');
+}
+
+function requireEditor (req, res, next) {
+  if (req.session.role === 'admin' || req.session.role === 'editor') return next();
+  res.status(403).send('Forbidden');
+}
+
+function requireLogin (req, res, next) {
+  if (req.session.user) return next();
+  res.redirect('/login');
+}
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/2/files#diff-0f4f0343eef0fba0687b522c079a290e6e34e7318b70bc4538e8e6de72134bccR72-R76'><strong>Variable Declaration</strong></a>
+
+The variable declaration for `text` was changed from `let` to `const`, but the logic and usage pattern should be verified to ensure this doesn't cause issues if the variable needs to be reassigned later in the function.
+</summary>
+
+```javascript
+});
+const code = resp.choices?.[0]?.message?.content?.trim().toLowerCase();
+if (code) {
+  await pool.query('UPDATE conversations SET detected_language=$1 WHERE id=$2', [code, conv.id]);
+  conv.detected_language = code;
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/2#issuecomment-3135547740)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=2>General</td>
+<td>
+
+
+
+<details><summary>Implement exponential backoff for polling</summary>
+
+___
+
+**Using <code>setTimeout</code> with a hardcoded 1-second delay in a polling loop can cause <br>performance issues and unnecessary delays. Consider implementing exponential <br>backoff or using the OpenAI SDK's built-in polling mechanisms if available.**
+
+[src/chat.js [107]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/2/files#diff-0f4f0343eef0fba0687b522c079a290e6e34e7318b70bc4538e8e6de72134bccR107-R107)
+
+```diff
+-await new Promise(resolve => setTimeout(resolve, 1000));
++const delay = Math.min(1000 * Math.pow(1.5, Math.floor(attempts / 5)), 5000);
++await new Promise(resolve => setTimeout(resolve, delay));
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion correctly identifies that a fixed delay in a polling loop is suboptimal and proposes using exponential backoff, which is a best practice for improving reliability and efficiency when interacting with external APIs.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr><tr><td>
+
+
+
+<details><summary>Make bulk message delay configurable</summary>
+
+___
+
+**The hardcoded 500ms delay between bulk messages may not be sufficient to avoid <br>rate limiting from WhatsApp API. Consider making this configurable or <br>implementing adaptive delays based on API response times.**
+
+[src/worker.js [294]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/2/files#diff-a19812fe5175f5ae8fccdf2c9400b66ea4408f519c4208fded5ae4c3365cac4dR294-R294)
+
+```diff
+-await new Promise(resolve => setTimeout(resolve, 500));
++const bulkDelay = parseInt(process.env.BULK_MESSAGE_DELAY || '1000', 10);
++await new Promise(resolve => setTimeout(resolve, bulkDelay));
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=1 -->
+
+
+<details><summary>Suggestion importance[1-10]: 6</summary>
+
+__
+
+Why: The suggestion correctly points out that a hardcoded delay for bulk messaging is inflexible and proposes making it configurable via an environment variable, which improves the application's adaptability to different rate limits.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/2#issuecomment-3135549825)
+
+---
+
