@@ -19,9 +19,12 @@ const { createObjectCsvStringifier } = require('csv-writer');
 const PDFDocument = require('pdfkit');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
+const expressLayouts = require('express-ejs-layouts');
 
 const app = express();
 expressWs(app);
+app.use(expressLayouts);
+app.set('layout', 'layout');
 
 const wsClients = new Set();
 app.set('view engine', 'ejs');

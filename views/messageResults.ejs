@@ -1,22 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Message Results</title>
-</head>
-<body>
-<h1>Message Results</h1>
-<a href="/messages">Back</a>
-<a href="/profile">Profile</a>
-<form action="/messages" method="post">
-  <input type="hidden" name="phone" value="<%= phone %>"/>
-  <input type="hidden" name="from" value="<%= from %>"/>
-  <input type="hidden" name="to" value="<%= to %>"/>
-  <button type="submit" name="export" value="csv">Export CSV</button>
-  <button type="submit" name="export" value="pdf">Export PDF</button>
+<h1 class="mb-3">Message Results</h1>
+<form action="/messages" method="post" class="mb-3">
+  <input type="hidden" name="phone" value="<%= phone %>">
+  <input type="hidden" name="from" value="<%= from %>">
+  <input type="hidden" name="to" value="<%= to %>">
+  <button class="btn btn-sm btn-secondary" type="submit" name="export" value="csv">Export CSV</button>
+  <button class="btn btn-sm btn-secondary" type="submit" name="export" value="pdf">Export PDF</button>
 </form>
-<ul>
+<ul class="list-group mb-4">
 <% results.forEach(function(r){ %>
-  <li>
+  <li class="list-group-item">
     <%= r.created_at.toISOString().slice(0,16).replace('T',' ') %> |
     <%= r.organization %> |
     <%= r.customer_phone %> |
@@ -24,7 +16,7 @@
     <%= r.text %>
     <% if (r.attachment_path) { %>
       <% if (r.attachment_type === 'image') { %>
-        <br/><img src="/<%= r.attachment_path.replace(/^[.\\/]+/, '') %>" width="150"/>
+        <br><img src="/<%= r.attachment_path.replace(/^[.\\/]+/, '') %>" width="150">
       <% } else { %>
         <a href="/<%= r.attachment_path.replace(/^[.\\/]+/, '') %>">Attachment</a>
       <% } %>
@@ -33,13 +25,13 @@
 <% }); %>
 </ul>
 <h2>Conversation Summaries</h2>
-<ul>
+<ul class="list-group">
 <% summaries.forEach(function(s){ %>
-  <li>
+  <li class="list-group-item">
     <strong><%= s.customer_phone %></strong>: <%= s.summary %>
     <% if (!s.escalated) { %>
-      <form action="/conversations/<%= s.id %>/escalate" method="post" style="display:inline;">
-        <button type="submit">تولي المحادثة</button>
+      <form action="/conversations/<%= s.id %>/escalate" method="post" class="d-inline">
+        <button class="btn btn-sm btn-warning" type="submit">تولي المحادثة</button>
       </form>
     <% } else { %>
       (تم التصعيد)
@@ -47,5 +39,3 @@
   </li>
 <% }); %>
 </ul>
-</body>
-</html>

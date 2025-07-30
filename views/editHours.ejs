@@ -1,14 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Edit Working Hours</title>
-</head>
-<body>
-<h1>Edit Working Hours for <%= name %></h1>
-<form action="/org/<%= orgId %>/hours" method="post">
-  <label>Start: <input type="time" name="working_hours_start" value="<%= start %>"/></label><br/>
-  <label>End: <input type="time" name="working_hours_end" value="<%= end %>"/></label><br/>
-  <button type="submit">Save</button>
+<h1 class="mb-3">Edit Working Hours for <%= name %></h1>
+<form action="/org/<%= orgId %>/hours" method="post" style="max-width:400px;">
+  <div class="mb-3">
+    <label class="form-label">Start</label>
+    <input class="form-control" type="time" name="working_hours_start" value="<%= start %>">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">End</label>
+    <input class="form-control" type="time" name="working_hours_end" value="<%= end %>">
+  </div>
+  <button class="btn btn-primary" type="submit">Save</button>
 </form>
-</body>
-</html>

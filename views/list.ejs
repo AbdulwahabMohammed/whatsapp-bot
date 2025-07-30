@@ -1,32 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Organizations</title>
-</head>
-<body>
-<h1>Organizations</h1>
-<a href="/logout">Logout</a>
-<a href="/profile">Profile</a>
-<a href="/org/new">Add Organization</a>
-<a href="/stats">Stats</a>
-<a href="/usage">Usage</a>
-<a href="/analytics">Analytics</a>
-<a href="/dashboard">Dashboard</a>
-<a href="/schedule/new">Schedule Message</a>
-<a href="/broadcast">Broadcast</a>
-<a href="/unanswered">Unanswered</a>
-<a href="/faq">FAQ Suggestions</a>
-<ul>
-<% orgs.forEach(function(o){ %>
-  <li>
-    <%= o.name %> (<%= o.phone %>, <%= o.language %>)
-    <form action="/org/<%= o.id %>/assistant" method="post" style="display:inline;">
-      <button type="submit">Create Assistant</button>
-    </form>
-    <a href="/org/<%= o.id %>/upload">Upload File</a>
-    <a href="/org/<%= o.id %>/hours">Edit Hours</a>
-  </li>
-<% }); %>
-</ul>
-</body>
-</html>
+<h1 class="mb-3">Organizations</h1>
+<div class="mb-3">
+  <a class="btn btn-primary" href="/org/new">Add Organization</a>
+</div>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Language</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  <% orgs.forEach(function(o){ %>
+    <tr>
+      <td><%= o.name %></td>
+      <td><%= o.phone %></td>
+      <td><%= o.language %></td>
+      <td>
+        <form action="/org/<%= o.id %>/assistant" method="post" class="d-inline">
+          <button class="btn btn-sm btn-secondary" type="submit">Create Assistant</button>
+        </form>
+        <a class="btn btn-sm btn-secondary" href="/org/<%= o.id %>/upload">Upload File</a>
+        <a class="btn btn-sm btn-secondary" href="/org/<%= o.id %>/hours">Edit Hours</a>
+      </td>
+    </tr>
+  <% }); %>
+  </tbody>
+</table>

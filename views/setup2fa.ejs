@@ -1,15 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Setup 2FA</title>
-</head>
-<body>
-<h1>تفعيل المصادقة الثنائية</h1>
+<h1 class="mb-3">تفعيل المصادقة الثنائية</h1>
 <p>امسح الرمز أدناه باستخدام تطبيق Google Authenticator ثم أدخل الرمز الحالي.</p>
-<img src="<%= qr %>" alt="QR Code">
-<form action="/setup-2fa" method="post">
-  <input type="text" name="token" placeholder="رمز التحقق">
-  <button type="submit">تفعيل</button>
+<img src="<%= qr %>" alt="QR Code" class="mb-3">
+<form action="/setup-2fa" method="post" style="max-width:300px;">
+  <div class="mb-3">
+    <input class="form-control" type="text" name="token" placeholder="رمز التحقق">
+  </div>
+  <button class="btn btn-primary" type="submit">تفعيل</button>
 </form>
-</body>
-</html>

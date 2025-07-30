@@ -1,14 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Response Analytics</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<h1>Response Analytics</h1>
-<a href="/">Back</a>
-<a href="/profile">Profile</a>
+<h1 class="mb-3">Response Analytics</h1>
 <canvas id="timeChart" width="400" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const stats = <%- JSON.stringify(stats) %>;
 const labels = stats.map(s => new Date(s.date).toISOString().slice(0,10));
@@ -30,5 +22,3 @@ new Chart(ctx, {
   }
 });
 </script>
-</body>
-</html>

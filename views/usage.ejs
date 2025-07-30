@@ -1,27 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Usage Summary</title>
-</head>
-<body>
-<h1>Usage Summary</h1>
-<a href="/">Back</a>
-<a href="/profile">Profile</a>
-<table border="1">
-  <tr>
-    <th>Date</th>
-    <th>Organization</th>
-    <th>Prompt Tokens</th>
-    <th>Completion Tokens</th>
-  </tr>
+<h1 class="mb-3">Usage Summary</h1>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Organization</th>
+      <th>Prompt Tokens</th>
+      <th>Completion Tokens</th>
+    </tr>
+  </thead>
+  <tbody>
   <% stats.forEach(function(s){ %>
-  <tr>
-    <td><%= s.date.toISOString().slice(0,10) %></td>
-    <td><%= s.name %></td>
-    <td><%= s.tokens_prompt %></td>
-    <td><%= s.tokens_completion %></td>
-  </tr>
+    <tr>
+      <td><%= s.date.toISOString().slice(0,10) %></td>
+      <td><%= s.name %></td>
+      <td><%= s.tokens_prompt %></td>
+      <td><%= s.tokens_completion %></td>
+    </tr>
   <% }); %>
+  </tbody>
 </table>
-</body>
-</html>

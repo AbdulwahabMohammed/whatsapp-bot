@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Upload File</title>
-</head>
-<body>
-<h1>Upload Reference File for Organization <%= orgId %></h1>
-<form action="/org/<%= orgId %>/upload" method="post">
-  <label>Path: <input type="text" name="filePath"/></label><br/>
-  <button type="submit">Upload</button>
+<h1 class="mb-3">Upload Reference File for Organization <%= orgId %></h1>
+<form action="/org/<%= orgId %>/upload" method="post" style="max-width:400px;" class="mb-3">
+  <div class="mb-3">
+    <label class="form-label">Path</label>
+    <input class="form-control" type="text" name="filePath">
+  </div>
+  <button class="btn btn-primary" type="submit">Upload</button>
 </form>
-</body>
-</html>

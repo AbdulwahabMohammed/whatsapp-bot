@@ -1,15 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Stats</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<h1>Statistics</h1>
-<a href="/">Back</a>
-<a href="/profile">Profile</a>
-<canvas id="connectionChart" width="400" height="200"></canvas>
+<h1 class="mb-3">Statistics</h1>
+<canvas id="connectionChart" width="400" height="200" class="mb-4"></canvas>
 <canvas id="messageChart" width="400" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 async function loadMetrics() {
   const res = await fetch('/metrics');
@@ -59,5 +51,3 @@ async function loadMetrics() {
 }
 window.onload = loadMetrics;
 </script>
-</body>
-</html>
