@@ -1,24 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Schedule Message</title>
-</head>
-<body>
-<h1>Schedule Message</h1>
+<h1 class="mb-3">Schedule Message</h1>
 <form action="/schedule/new" method="post">
-  <label>Organization:
-    <select name="organization_id">
+  <div class="mb-3">
+    <label class="form-label">Organization</label>
+    <select class="form-select" name="organization_id">
       <% orgs.forEach(function(o){ %>
         <option value="<%= o.id %>"><%= o.name %></option>
       <% }); %>
     </select>
-  </label><br/>
-  <label>Phone: <input type="text" name="phone"/></label><br/>
-  <label>Send At: <input type="datetime-local" name="send_at"/></label><br/>
-  <label>Text:<br/>
-    <textarea name="text" rows="5" cols="40"></textarea>
-  </label><br/>
-  <button type="submit">Save</button>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Phone</label>
+    <input class="form-control" type="text" name="phone">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Send At</label>
+    <input class="form-control" type="datetime-local" name="send_at">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Text</label>
+    <textarea class="form-control" name="text" rows="5"></textarea>
+  </div>
+  <button class="btn btn-primary" type="submit">Save</button>
 </form>
-</body>
-</html>

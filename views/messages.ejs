@@ -1,17 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Search Messages</title>
-</head>
-<body>
-<h1>Search Messages</h1>
-<a href="/">Back</a>
-<a href="/profile">Profile</a>
-<form action="/messages" method="post">
-  <label>Phone: <input type="text" name="phone"/></label><br/>
-  <label>From: <input type="date" name="from"/></label><br/>
-  <label>To: <input type="date" name="to"/></label><br/>
-  <button type="submit">Search</button>
+<h1 class="mb-3">Search Messages</h1>
+<form action="/messages" method="post" class="row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Phone</label>
+    <input class="form-control" type="text" name="phone">
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">From</label>
+    <input class="form-control" type="date" name="from">
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">To</label>
+    <input class="form-control" type="date" name="to">
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">Search</button>
+  </div>
 </form>
-</body>
-</html>

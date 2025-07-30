@@ -1,19 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Unanswered Questions</title>
-</head>
-<body>
-<h1>Unanswered Questions</h1>
-<a href="/">Back</a>
-<a href="/profile">Profile</a>
-<ul>
+<h1 class="mb-3">Unanswered Questions</h1>
+<ul class="list-group">
   <% alerts.forEach(function(a){ %>
-    <li>
+    <li class="list-group-item">
       <%= a.created_at.toISOString().slice(0,16).replace('T',' ') %> |
       <%= a.phone %> : <%= a.message %>
     </li>
   <% }); %>
 </ul>
-</body>
-</html>

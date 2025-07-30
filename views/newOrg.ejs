@@ -1,20 +1,28 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Add Organization</title>
-</head>
-<body>
-<h1>Add Organization</h1>
+<h1 class="mb-3">Add Organization</h1>
 <form action="/org/new" method="post">
-  <label>Name: <input type="text" name="name"/></label><br/>
-  <label>Phone: <input type="text" name="phone"/></label><br/>
-  <label>Language: <input type="text" name="language" value="ar"/></label><br/>
-  <label>Working hours start: <input type="time" name="working_hours_start"/></label><br/>
-  <label>Working hours end: <input type="time" name="working_hours_end"/></label><br/>
-  <label>Instructions:<br/>
-    <textarea name="instructions" rows="5" cols="40"></textarea>
-  </label><br/>
-  <button type="submit">Save</button>
+  <div class="mb-3">
+    <label class="form-label">Name</label>
+    <input class="form-control" type="text" name="name">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Phone</label>
+    <input class="form-control" type="text" name="phone">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Language</label>
+    <input class="form-control" type="text" name="language" value="ar">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Working hours start</label>
+    <input class="form-control" type="time" name="working_hours_start">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Working hours end</label>
+    <input class="form-control" type="time" name="working_hours_end">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Instructions</label>
+    <textarea class="form-control" name="instructions" rows="5"></textarea>
+  </div>
+  <button class="btn btn-primary" type="submit">Save</button>
 </form>
-</body>
-</html>

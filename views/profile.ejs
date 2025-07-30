@@ -1,20 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Profile</title>
-</head>
-<body>
-<h1>Profile</h1>
+<h1 class="mb-3">Profile</h1>
 <p>Username: <%= username %></p>
 <p>Role: <%= role %></p>
 <p>2FA: <%= enabled ? 'enabled' : 'disabled' %></p>
-<a href="/">Back</a>
 <% if (!enabled) { %>
-  <a href="/profile/setup-2fa">تفعيل المصادقة الثنائية</a>
+  <a class="btn btn-primary" href="/profile/setup-2fa">تفعيل المصادقة الثنائية</a>
 <% } else { %>
-  <form action="/profile/disable-2fa" method="post">
-    <button type="submit">تعطيل المصادقة الثنائية</button>
+  <form action="/profile/disable-2fa" method="post" class="d-inline">
+    <button class="btn btn-danger" type="submit">تعطيل المصادقة الثنائية</button>
   </form>
 <% } %>
-</body>
-</html>

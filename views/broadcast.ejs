@@ -1,27 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Broadcast Message</title>
-</head>
-<body>
-<h1>Broadcast Message</h1>
-<a href="/">Back</a>
-<a href="/profile">Profile</a>
+<h1 class="mb-3">Broadcast Message</h1>
 <form action="/broadcast" method="post">
-  <label>Organization:
-    <select name="organization_id">
+  <div class="mb-3">
+    <label class="form-label">Organization</label>
+    <select class="form-select" name="organization_id">
       <% orgs.forEach(function(o){ %>
         <option value="<%= o.id %>"><%= o.name %></option>
       <% }); %>
     </select>
-  </label><br/>
-  <label>Phones (comma separated):<br/>
-    <textarea name="phones" rows="5" cols="40"></textarea>
-  </label><br/>
-  <label>Text:<br/>
-    <textarea name="text" rows="5" cols="40"></textarea>
-  </label><br/>
-  <button type="submit">Send</button>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Phones (comma separated)</label>
+    <textarea class="form-control" name="phones" rows="5"></textarea>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Text</label>
+    <textarea class="form-control" name="text" rows="5"></textarea>
+  </div>
+  <button class="btn btn-primary" type="submit">Send</button>
 </form>
-</body>
-</html>
