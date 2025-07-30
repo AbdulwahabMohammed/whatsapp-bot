@@ -1111,3 +1111,94 @@ Why: The suggestion proposes a minor reordering of `app.use(expressLayouts)` and
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #98)
+**Title**: Fix dynamic header title
+
+**Branch**: `codex/update-page-title-handling-in-header` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 1 🔵⚪⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>Security concerns</strong><br><br>
+
+<strong>XSS vulnerability:</strong><br> The dynamic title rendering using `<%= title %>` could potentially allow XSS attacks if the `title` variable contains malicious HTML/JavaScript content and is not properly sanitized before being passed to the template. Consider using `<%- title %>` for HTML escaping or ensure title content is validated/sanitized at the controller level.</td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/98/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR6-R6'><strong>Template Safety</strong></a>
+
+The `typeof` check for the `title` variable is good practice, but consider if XSS protection is needed when rendering user-provided titles. The template should ensure any dynamic title content is properly escaped.
+</summary>
+
+```txt
+<title><%= typeof title !== 'undefined' ? title : 'WhatsApp Bot Admin' %></title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/98#issuecomment-3135124842)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Use EJS locals pattern</summary>
+
+___
+
+**Use EJS's built-in <code>locals</code> object to safely check for variable existence. This is <br>the recommended EJS pattern for checking undefined variables and is more <br>reliable than <code>typeof</code>.**
+
+[views/partials/header.ejs [6]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/98/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR6-R6)
+
+```diff
+-<title><%= typeof title !== 'undefined' ? title : 'WhatsApp Bot Admin' %></title>
++<title><%= locals.title || 'WhatsApp Bot Admin' %></title>
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 6</summary>
+
+__
+
+Why: The suggestion correctly proposes using the idiomatic EJS `locals` object, which is a cleaner and more standard way to handle optional template variables than using `typeof`.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/98#issuecomment-3135125713)
+
+---
+
