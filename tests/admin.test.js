@@ -271,4 +271,19 @@ describe('admin routes', () => {
     exitSpy.mockRestore();
     process.env.OPENAI_API_KEY = 'sk-test-valid-key';
   });
+
+  it('exits if OPENAI_API_KEY is invalid', () => {
+    jest.resetModules();
+    const logger = require('../src/logger');
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('exit');
+    });
+    process.env.OPENAI_API_KEY = 'invalid-key';
+    logger.error.mockClear();
+    expect(() => require('../src/openai')).toThrow('exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(logger.error).toHaveBeenCalled();
+    exitSpy.mockRestore();
+    process.env.OPENAI_API_KEY = 'sk-test-valid-key';
+  });
 });

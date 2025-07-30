@@ -17,7 +17,7 @@ const logger = require('./logger');
 dotenv.config();
 
 const key = process.env.OPENAI_API_KEY;
-if (!key || (key.startsWith('sk-') && key.length < 40)) {
+if (!key || !key.startsWith('sk-') || key.length < 40) {
   logger.error('OPENAI_API_KEY is missing or invalid');
   process.exit(1);
 }
