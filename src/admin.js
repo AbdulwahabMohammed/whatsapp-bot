@@ -156,8 +156,7 @@ app.get('/profile', requireLogin, async (req, res) => {
       enabled: !!user.totp_secret,
     });
   } catch (err) {
-    if (req.session.temp_secret) delete req.session.temp_secret;
-    logger.error('2FA setup failed:', err);
+    logger.error('Profile loading failed:', err);
     res.status(500).send('Failed to load profile. Please try again.');
   }
 });
