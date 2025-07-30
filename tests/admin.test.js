@@ -123,4 +123,17 @@ describe('admin routes', () => {
     await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.get('/unanswered').expect(200);
   });
+
+  it('serves faq suggestions page', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent.get('/faq').expect(200);
+  });
+
+  it('deletes faq suggestion', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent.post('/faq/1/delete').expect(302);
+    expect(pool.query).toHaveBeenCalledWith('DELETE FROM faq_suggestions WHERE id=$1', ['1']);
+  });
 });

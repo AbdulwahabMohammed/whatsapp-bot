@@ -68,6 +68,11 @@
    npm run worker
    ```
 
+10. توليد اقتراحات الأسئلة المتكررة:
+   ```bash
+   npm run generate-faq
+   ```
+
 ## بنية المجلد `src/`
 - `db.js` – إعداد اتصال PostgreSQL.
 - `openai.js` – تهيئة عميل OpenAI ليعمل مع الإصدارات المختلفة.
