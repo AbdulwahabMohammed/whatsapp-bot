@@ -24,6 +24,15 @@ jest.mock('../src/queue', () => ({
   getQueueLength: jest.fn(async () => 0)
 }));
 
+jest.mock('speakeasy', () => ({
+  totp: { verify: jest.fn(() => true) },
+  generateSecret: jest.fn(() => ({ base32: 'AAAA', otpauth_url: 'otpauth://' }))
+}));
+
+jest.mock('qrcode', () => ({
+  toDataURL: jest.fn(async () => 'data:image/png;base64,AAA')
+}));
+
 jest.mock('../src/db', () => ({
   query: jest.fn()
 }));
@@ -48,7 +57,7 @@ describe('admin routes', () => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
       if (text.includes('SELECT password_hash')) {
-        return { rows: [{ password_hash: hash, role: 'admin' }] };
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: 'AAAA' }] };
       }
       return { rows: [] };
     });
@@ -60,14 +69,14 @@ describe('admin routes', () => {
 
   it('creates organization', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret');
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.post('/org/new').send('name=Test&phone=123');
     expect(createOrganization).toHaveBeenCalledWith('Test', '123', undefined, undefined);
   });
 
   it('lists organizations', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret');
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.get('/').expect(200);
   });
 
@@ -77,13 +86,13 @@ describe('admin routes', () => {
 
   it('serves stats page', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret');
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.get('/stats').expect(200);
   });
 
   it('serves analytics page', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret');
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.get('/analytics').expect(200);
   });
 });

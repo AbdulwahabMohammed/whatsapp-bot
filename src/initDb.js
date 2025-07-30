@@ -113,12 +113,17 @@ async function init() {
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'admin'
+      role TEXT NOT NULL DEFAULT 'admin',
+      totp_secret TEXT
     );
   `);
 
   await pool.query(
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'"
+  );
+
+  await pool.query(
+    'ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT'
   );
 
   await pool.query(
