@@ -57,6 +57,7 @@ async function postWebhook (data) {
 }
 
 const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
+const BULK_MESSAGE_DELAY = parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10);
 
 const sockets = {};
 
@@ -291,7 +292,7 @@ const bulkWorker = new Worker(
           timestamp: Date.now()
         });
         await sock.sendMessage(phone, { text });
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, BULK_MESSAGE_DELAY));
       } catch (err) {
         logger.error('Failed to send bulk message:', err);
       }

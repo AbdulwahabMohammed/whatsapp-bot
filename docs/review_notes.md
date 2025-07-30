@@ -1853,3 +1853,96 @@ Why: The suggestion proposes a stylistic refactor, but the original code's expon
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #4)
+**Title**: Add configurable bulk message delay
+
+**Branch**: `codex/add-bulk_message_delay-environment-variable` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/4/files#diff-a19812fe5175f5ae8fccdf2c9400b66ea4408f519c4208fded5ae4c3365cac4dR60-R60'><strong>Input Validation</strong></a>
+
+The BULK_MESSAGE_DELAY environment variable is parsed as an integer but lacks validation for negative values or zero, which could cause unexpected behavior in the setTimeout function.
+</summary>
+
+```javascript
+const BULK_MESSAGE_DELAY = parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10);
+
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/4#issuecomment-3137004419)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- 4ffe47f -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Add bounds validation for delay</summary>
+
+___
+
+**Add validation to ensure the delay value is positive and within reasonable <br>bounds. Negative or extremely large values could cause unexpected behavior or <br>system issues.**
+
+[src/worker.js [60]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/4/files#diff-a19812fe5175f5ae8fccdf2c9400b66ea4408f519c4208fded5ae4c3365cac4dR60-R60)
+
+```diff
+-const BULK_MESSAGE_DELAY = parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10);
++const BULK_MESSAGE_DELAY = Math.max(0, Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10), 60000));
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 6</summary>
+
+__
+
+Why: The suggestion correctly identifies that the `BULK_MESSAGE_DELAY` from the environment variable is not validated, and the proposed change to clamp the value makes the code more robust against misconfiguration.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/4#issuecomment-3137006096)
+
+---
+
