@@ -1206,6 +1206,7 @@ Why: The suggestion correctly proposes using the idiomatic EJS `locals` object, 
 
 ---
 
+<!-- FIXED-BEGIN alert-xss -->
 ## 🧠 PR Comments (PR #99)
 **Title**: Fix header/footer container coupling
 
@@ -1258,4 +1259,5 @@ No code suggestions found for the PR.
 🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/99#issuecomment-3135139908)
 
 ---
+<!-- FIXED-END alert-xss -->
 
