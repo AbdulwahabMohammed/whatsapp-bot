@@ -1,4 +1,4 @@
-name: Save Qodo Review Comments
+name: Save All PR Comments
 
 on:
   pull_request:
@@ -17,10 +17,10 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: ⏳ Wait for qodo-merge-pro to comment
-        run: sleep 30
+      - name: ⏳ Wait for any bots or reviewers to comment
+        run: sleep 60
 
-      - name: Append qodo-merge-pro comments to docs/review_notes.md
+      - name: Append all PR comments to docs/review_notes.md
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -40,25 +40,16 @@ jobs:
               issue_number: prNumber
             });
 
-            // استخراج تعليقات GitHub App (qodo-merge-pro)
-            const qodoComments = comments.filter(c =>
-              c.user?.type === 'Bot' &&
-              c.author_association === 'APP' &&
-              (
-                c.user.login.includes('qodo') ||
-                c.body.includes('Qodo Merge Pro')
-              )
-            );
-
-            let newContent = `\n\n---\n\n## 🧠 Qodo Review Comments (PR #${prNumber})\n`;
+            let newContent = `\n\n---\n\n## 🧠 PR Comments (PR #${prNumber})\n`;
             newContent += `**Title**: ${prTitle}\n\n`;
             newContent += `**Branch**: \`${prBranch}\` &nbsp;&nbsp; 📅 **Date**: ${currentDate}\n\n`;
 
-            if (qodoComments.length === 0) {
-              newContent += '_❌ No comments from qodo-merge-pro found._\n';
+            if (comments.length === 0) {
+              newContent += '_❌ No comments found on this PR._\n';
             } else {
-              qodoComments.forEach((c, i) => {
-                newContent += `### 💬 Comment ${i + 1}\n\n`;
+              comments.forEach((c, i) => {
+                const author = c.user?.login || 'Unknown';
+                newContent += `### 💬 Comment ${i + 1} by \`${author}\`\n\n`;
                 newContent += `${c.body}\n\n`;
                 newContent += `🔗 [View in GitHub](${c.html_url})\n\n`;
                 newContent += `---\n\n`;
@@ -76,10 +67,10 @@ jobs:
             const finalContent = existingContent + newContent;
             fs.writeFileSync(filePath, finalContent);
 
-      - name: Commit and push review notes to branch
+      - name: Commit and push all review notes
         run: |
           git config user.name "qodo-bot"
           git config user.email "qodo@users.noreply.github.com"
           git add docs/review_notes.md
-          git commit -m "📝 Update Qodo review notes"
+          git commit -m "📝 Append all PR comments to review notes"
           git push origin HEAD:${{ github.head_ref }}
