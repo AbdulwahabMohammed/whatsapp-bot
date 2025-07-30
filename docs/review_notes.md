@@ -119,6 +119,52 @@ app.use((req, res, next) => {
 </td></tr>
 </table>
 
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Use proper DOM attribute setting</summary>
+
+___
+
+**Setting <code>document.dir</code> directly modifies global DOM state which can cause issues <br>in SPAs. Consider using a more Vue-appropriate approach like reactive CSS <br>classes or scoped directionality.**
+
+[frontend/src/views/OrgList.vue [21-25]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/88/files#diff-ef4b69c343e6b59e40a8e05bdaeac7188fad60e1987fc974cde9e9dcba3f1155R21-R25)
+
+```diff
+ watch(orgs, list => {
+   if (!list.length) return;
+   const lang = list[0].language || 'en';
+-  document.dir = /^ar/.test(lang) ? 'rtl' : 'ltr';
++  const isRtl = /^ar/.test(lang);
++  document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+ });
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 5</summary>
+
+__
+
+Why: The suggestion correctly points out that using `setAttribute` on `document.documentElement` is a more robust way to set the document direction than modifying `document.dir`.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
 
 🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/88#issuecomment-3134918358)
 
