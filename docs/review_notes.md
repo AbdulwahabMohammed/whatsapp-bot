@@ -2135,3 +2135,60 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #9)
+**Title**: Fix upload error message fallback
+
+**Branch**: `codex/update-error-handling-in-upload.ejs` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/9/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R39-R46'><strong>Logic Issue</strong></a>
+
+The variable `message` is declared inside the error handling block but may be used before being properly initialized. If JSON parsing succeeds but `data.message` is falsy, the fallback logic might not work as expected.
+</summary>
+
+```txt
+let message = 'Upload failed';
+try {
+  const data = JSON.parse(text);
+  message = data.message || message;
+} catch {
+  if (text) message = text;
+}
+throw new Error(message);
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/9#issuecomment-3137254297)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+No code suggestions found for the PR.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/9#issuecomment-3137255978)
+
+---
+
