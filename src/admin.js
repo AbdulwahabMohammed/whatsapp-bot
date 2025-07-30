@@ -416,6 +416,10 @@ app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
 });
 
 function startAdminServer() {
+  if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'secret') {
+    logger.error('SESSION_SECRET must be set and not equal to "secret"');
+    process.exit(1);
+  }
   const port = process.env.ADMIN_PORT || 3001;
   statusInterval = setInterval(broadcastStatus, 5000);
   const server = app.listen(port, () => {

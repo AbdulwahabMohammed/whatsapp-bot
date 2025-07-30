@@ -38,6 +38,8 @@ jest.mock('../src/db', () => ({
   query: jest.fn()
 }));
 
+process.env.SESSION_SECRET = 'test-secret';
+
 const pool = require('../src/db');
 
 const { app, startAdminServer, stopAdminServer } = require('../src/admin');
@@ -149,5 +151,19 @@ describe('admin routes', () => {
     await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.post('/users/1/disable-2fa').expect(302);
     expect(pool.query).toHaveBeenCalledWith('UPDATE users SET totp_secret=NULL WHERE id=$1', ['1']);
+  });
+
+  it('exits if SESSION_SECRET is missing', () => {
+    const logger = require('../src/logger');
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('exit');
+    });
+    delete process.env.SESSION_SECRET;
+    logger.error.mockClear();
+    expect(() => startAdminServer()).toThrow('exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(logger.error).toHaveBeenCalled();
+    exitSpy.mockRestore();
+    process.env.SESSION_SECRET = 'test-secret';
   });
 });

@@ -19,6 +19,7 @@
 ## خطوات التثبيت والتشغيل
 1. نسخ الملف `.env.example` إلى `.env` وتعبئة مفاتيح OpenAI وبيانات PostgreSQL،
    مع تحديد متغيرات `ADMIN_PASSWORD` و`ADMIN_PORT` و`SESSION_SECRET` للوحة الإدارة.
+   يجب أن تكون قيمة `SESSION_SECRET` فريدة وغير "secret" حتى يعمل الخادم في بيئة الإنتاج.
    يمكن كذلك تعديل `SUMMARY_MESSAGE_LIMIT` لتحديد عدد الرسائل قبل تلخيص المحادثة،
    وضبط `LOG_LEVEL` لتغيير مستوى السجلات.
 2. تثبيت الاعتمادات:
@@ -92,7 +93,7 @@
 يوفر المشروع ملفات `Dockerfile` و`docker-compose.yml` لتشغيل البوت داخل حاويات.
 
 1. انسخ `.env.example` إلى `.env` وعدل قيم متغيرات البيئة مثل مفاتيح OpenAI وإعدادات PostgreSQL،
-   ولا تنس تعيين `SESSION_SECRET`. يمكن تعديل `SUMMARY_MESSAGE_LIMIT` إذا أردت تغيير
+   ولا تنس تعيين `SESSION_SECRET` بقيمة عشوائية غير "secret". يمكن تعديل `SUMMARY_MESSAGE_LIMIT` إذا أردت تغيير
    عدد الرسائل قبل تلخيص المحادثة.
 2. أنشئ الجداول داخل قاعدة البيانات (يُنفذ مرة واحدة):
    ```bash
