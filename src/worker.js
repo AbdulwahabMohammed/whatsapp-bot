@@ -15,6 +15,21 @@ const { connectionGauge, messageCounter } = require('./metrics');
 const { startScheduler } = require('./scheduler');
 require('dotenv').config();
 
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+async function postWebhook(data) {
+  if (!WEBHOOK_URL) return;
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (err) {
+    logger.error('Failed to send webhook:', err);
+  }
+}
+
 const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
 
 const sockets = {};
@@ -104,10 +119,20 @@ const worker = new Worker(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
           [conversationId, 'user', text, attachmentType, attachmentPath]
         );
+        await postWebhook({
+          sender,
+          text,
+          timestamp: job.data.receivedAt || Date.now(),
+        });
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
           [conversationId, 'assistant', reply, replyAttachmentType, replyAttachmentPath]
         );
+        await postWebhook({
+          sender: 'assistant',
+          text: reply,
+          timestamp: Date.now(),
+        });
 
         const latency = Date.now() - (job.data.receivedAt || Date.now());
         await pool.query(
@@ -191,6 +216,11 @@ const bulkWorker = new Worker(
           'INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)',
           [conversationId, 'admin', text]
         );
+        await postWebhook({
+          sender: 'admin',
+          text,
+          timestamp: Date.now(),
+        });
         await sock.sendMessage(phone, { text });
         await new Promise(r => setTimeout(r, 500));
       } catch (err) {

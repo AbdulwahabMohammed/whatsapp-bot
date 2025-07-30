@@ -11,6 +11,7 @@
 | `PGPASSWORD` | `password` | كلمة مرور المستخدم |
 | `PGPORT` | `5432` | منفذ اتصال PostgreSQL |
 | `REDIS_URL` | `redis://localhost:6379` | عنوان خادم Redis المستخدم لطابور الرسائل |
+| `WEBHOOK_URL` | `https://example.com/hook` | مسار اختياري لتلقي بيانات المحادثات |
 | `ADMIN_PASSWORD` | `your-password` | كلمة المرور المطلوبة لدخول واجهة الإدارة |
 | `ADMIN_PORT` | `3001` | المنفذ الذي تعمل عليه لوحة الإدارة |
 | `SESSION_SECRET` | `change-me` | السر المستخدم لتوقيع جلسات لوحة الإدارة |

@@ -43,6 +43,12 @@ describe('worker message flow', () => {
     mockSock.ev.on.mockReset();
     mockSock.sendMessage.mockReset();
     require('../src/chat').sendMessage.mockReset();
+    global.fetch = jest.fn(() => Promise.resolve({}));
+    process.env.WEBHOOK_URL = '';
+  });
+
+  afterEach(() => {
+    delete global.fetch;
   });
 
   test('sends reply via WhatsApp', async () => {
@@ -82,6 +88,18 @@ describe('worker message flow', () => {
     await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(mockSock.sendMessage).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
+  });
+
+  test('posts webhook with message data', async () => {
+    require('../src/chat').sendMessage.mockResolvedValue('reply');
+    process.env.WEBHOOK_URL = 'http://hook';
+    require('../src/worker');
+    await new Promise(r => setImmediate(r));
+    const ts = 111;
+    await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi', receivedAt: ts } });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body).toEqual({ sender: '123', text: 'hi', timestamp: ts });
   });
 
   test('bulk worker sends to each phone', async () => {
