@@ -1363,3 +1363,119 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #102)
+**Title**: Check OPENAI_API_KEY at startup
+
+**Branch**: `codex/validate-openai-api-key-and-log-error` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>PR contains tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/102/files#diff-0988a07dae73d97c2885e82effe13ef6fd92dfd04f55c446a4c3ca7324db75e6R20-R20'><strong>Validation Logic</strong></a>
+
+The API key validation logic checks if key starts with 'sk-' and has length < 40, but this seems incorrect. OpenAI API keys typically start with 'sk-' and are longer than 40 characters, so this condition would incorrectly flag valid keys as invalid.
+</summary>
+
+```javascript
+if (!key || (key.startsWith('sk-') && key.length < 40)) {
+  logger.error('OPENAI_API_KEY is missing or invalid');
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/102/files#diff-7f348516a9758eca58203fced3ff8c1c4b8bf4a7a9e6a76d24e1f6d5fe8228c1R260-R273'><strong>Test Isolation</strong></a>
+
+The test modifies global environment variables and uses jest.resetModules() but may not properly restore the original OPENAI_API_KEY value if it was undefined initially, potentially affecting other tests.
+</summary>
+
+```javascript
+it('exits if OPENAI_API_KEY is missing', () => {
+  jest.resetModules();
+  const logger = require('../src/logger');
+  const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+    throw new Error('exit');
+  });
+  delete process.env.OPENAI_API_KEY;
+  logger.error.mockClear();
+  expect(() => require('../src/openai')).toThrow('exit');
+  expect(exitSpy).toHaveBeenCalledWith(1);
+  expect(logger.error).toHaveBeenCalled();
+  exitSpy.mockRestore();
+  process.env.OPENAI_API_KEY = 'sk-test-valid-key';
+});
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/102#issuecomment-3135243578)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>Possible issue</td>
+<td>
+
+
+
+<details><summary>Fix API key validation logic</summary>
+
+___
+
+**The validation logic is incorrect - it will exit when the key starts with 'sk-' <br>AND is less than 40 characters, but it should exit when the key does NOT start <br>with 'sk-' OR is less than the minimum length. The current condition allows <br>invalid keys that don't start with 'sk-'.**
+
+[src/openai.js [20-23]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/102/files#diff-0988a07dae73d97c2885e82effe13ef6fd92dfd04f55c446a4c3ca7324db75e6R20-R23)
+
+```diff
+-if (!key || (key.startsWith('sk-') && key.length < 40)) {
++if (!key || !key.startsWith('sk-') || key.length < 40) {
+   logger.error('OPENAI_API_KEY is missing or invalid');
+   process.exit(1);
+ }
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 9</summary>
+
+__
+
+Why: The suggestion correctly identifies a logical flaw in the API key validation that would allow invalid keys (those not starting with `sk-`) to pass, and the proposed fix is accurate.
+
+
+</details></details></td><td align=center>High
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/102#issuecomment-3135244739)
+
+---
+
