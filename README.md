@@ -89,6 +89,8 @@
 يوفر المجلد `docs/` شروحات تفصيلية حول إعداد المشروع واستخدامه، ومنها:
 - [docs/setup.md](docs/setup.md) – خطوات الإعداد المحلي.
 - [docs/openai.md](docs/openai.md) – كيفية تهيئة عميل OpenAI وملاحظات الإصدارات.
+كما قد تجد في الملف [docs/review_notes.md](docs/review_notes.md) مقترحات للمراجعة،
+ويُستحسن مسح محتواه بعد تطبيقها.
 
 ## استخدام Docker
 يوفر المشروع ملفات `Dockerfile` و`docker-compose.yml` لتشغيل البوت داخل حاويات.
