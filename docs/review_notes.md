@@ -807,3 +807,215 @@ Why: The suggestion correctly points out the lack of error handling for the `fet
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #96)
+**Title**: Handle upload errors
+
+**Branch**: `codex/add-error-handling-to-fetch-call` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/96/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R27-R49'><strong>Code Duplication</strong></a>
+
+The alert creation logic is duplicated between success and error cases. Consider extracting this into a helper function to reduce code duplication and improve maintainability.
+</summary>
+
+```txt
+  const div = document.createElement('div');
+  div.className = 'alert alert-success alert-dismissible fade show';
+  div.setAttribute('role', 'alert');
+  div.textContent = result.message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-close';
+  btn.setAttribute('data-bs-dismiss', 'alert');
+  btn.setAttribute('aria-label', 'Close');
+  div.appendChild(btn);
+  container.appendChild(div);
+} catch (err) {
+  const div = document.createElement('div');
+  div.className = 'alert alert-danger alert-dismissible fade show';
+  div.setAttribute('role', 'alert');
+  div.textContent = err.message || 'Request failed';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-close';
+  btn.setAttribute('data-bs-dismiss', 'alert');
+  btn.setAttribute('aria-label', 'Close');
+  div.appendChild(btn);
+  container.appendChild(div);
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/96/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R38-R50'><strong>Error Handling</strong></a>
+
+The catch block may not handle all error scenarios properly. Network errors and JSON parsing failures could result in generic error messages that don't provide useful feedback to users.
+</summary>
+
+```txt
+} catch (err) {
+  const div = document.createElement('div');
+  div.className = 'alert alert-danger alert-dismissible fade show';
+  div.setAttribute('role', 'alert');
+  div.textContent = err.message || 'Request failed';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-close';
+  btn.setAttribute('data-bs-dismiss', 'alert');
+  btn.setAttribute('aria-label', 'Close');
+  div.appendChild(btn);
+  container.appendChild(div);
+}
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/96#issuecomment-3135101289)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>Possible issue</td>
+<td>
+
+
+
+<details><summary>Check response status before parsing</summary>
+
+___
+
+**Check response status before parsing JSON to avoid potential parsing errors on <br>non-JSON error responses. Move the <code>res.ok</code> check before <code>res.json()</code> call.**
+
+[views/upload.ejs [23-26]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/96/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R23-R26)
+
+```diff
++if (!res.ok) {
++  const errorText = await res.text();
++  throw new Error(errorText || 'Upload failed');
++}
+ const result = await res.json();
+-if (!res.ok) {
+-  throw new Error(result.message || 'Upload failed');
+-}
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 8</summary>
+
+__
+
+Why: The suggestion correctly points out that an error response might not be valid JSON, and checking `res.ok` first prevents a potential JSON parsing error, making the error handling more robust.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Extract duplicated alert creation logic</summary>
+
+___
+
+**Extract the duplicated alert creation logic into a reusable function to reduce <br>code duplication and improve maintainability.**
+
+[views/upload.ejs [27-49]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/96/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R27-R49)
+
+```diff
+-const div = document.createElement('div');
+-div.className = 'alert alert-success alert-dismissible fade show';
+-div.setAttribute('role', 'alert');
+-div.textContent = result.message;
+-const btn = document.createElement('button');
+-btn.type = 'button';
+-btn.className = 'btn-close';
+-btn.setAttribute('data-bs-dismiss', 'alert');
+-btn.setAttribute('aria-label', 'Close');
+-div.appendChild(btn);
+-container.appendChild(div);
+-...
+-const div = document.createElement('div');
+-div.className = 'alert alert-danger alert-dismissible fade show';
+-div.setAttribute('role', 'alert');
+-div.textContent = err.message || 'Request failed';
+-const btn = document.createElement('button');
+-btn.type = 'button';
+-btn.className = 'btn-close';
+-btn.setAttribute('data-bs-dismiss', 'alert');
+-btn.setAttribute('aria-label', 'Close');
+-div.appendChild(btn);
+-container.appendChild(div);
++function createAlert(message, type = 'success') {
++  const div = document.createElement('div');
++  div.className = `alert alert-${type} alert-dismissible fade show`;
++  div.setAttribute('role', 'alert');
++  div.textContent = message;
++  const btn = document.createElement('button');
++  btn.type = 'button';
++  btn.className = 'btn-close';
++  btn.setAttribute('data-bs-dismiss', 'alert');
++  btn.setAttribute('aria-label', 'Close');
++  div.appendChild(btn);
++  return div;
++}
+ 
++// In success block:
++container.appendChild(createAlert(result.message));
++
++// In catch block:
++container.appendChild(createAlert(err.message || 'Request failed', 'danger'));
++
+```
+
+
+
+`[To ensure code accuracy, apply this suggestion manually]`
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion correctly identifies significant code duplication for alert creation in the `try` and `catch` blocks and proposes a reusable function, which greatly improves code maintainability and readability.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/96#issuecomment-3135102727)
+
+---
+
