@@ -12,13 +12,12 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository on correct branch
         uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
 
-
-      - name: Fetch PR comments
+      - name: Fetch PR comments and create file
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,21 +31,21 @@ jobs:
             });
 
             const qodoComments = comments.filter(c => c.user.login.includes('qodo'));
-            let content = '# Qodo Review Comments\n\n';
+            let content = `# Qodo Review Comments (PR #${prNumber})\n\n`;
 
             qodoComments.forEach((c, i) => {
-              content += `### 🧠 Comment ${i + 1} (line ${c.position})\n`;
+              content += `### 🧠 Comment ${i + 1} (file: ${c.path}, line: ${c.original_line || '-'})\n`;
               content += `> ${c.body}\n\n`;
               content += `🔗 [View in GitHub](${c.html_url})\n\n`;
             });
 
-            fs.writeFileSync('qodo-review.md', content);
+            if (!fs.existsSync('./.qodo')) fs.mkdirSync('./.qodo');
+            fs.writeFileSync('./.qodo/qodo-review.md', content);
 
-      - name: Commit Qodo comments
+      - name: Commit and push Qodo comments to main
         run: |
           git config user.name "qodo-bot"
           git config user.email "qodo@users.noreply.github.com"
-          git add qodo-review.md
+          git add .qodo/qodo-review.md
           git commit -m "📝 Add Qodo review comments"
           git push origin HEAD:${{ github.head_ref }}
-
