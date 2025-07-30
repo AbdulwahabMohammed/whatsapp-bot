@@ -17,6 +17,8 @@ const logger = require('./logger');
 const pool = require('./db');
 const { createObjectCsvStringifier } = require('csv-writer');
 const PDFDocument = require('pdfkit');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 
 const app = express();
 expressWs(app);
@@ -85,18 +87,52 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, token } = req.body;
   const { rows } = await pool.query(
-    'SELECT password_hash, role FROM users WHERE username=$1',
+    'SELECT password_hash, role, totp_secret FROM users WHERE username=$1',
     [username]
   );
   const user = rows[0];
-  if (user && (await bcrypt.compare(password, user.password_hash))) {
+  if (!user) return res.status(401).send('Invalid credentials');
+
+  const pwOk = await bcrypt.compare(password, user.password_hash);
+  if (!pwOk) return res.status(401).send('Invalid credentials');
+
+  if (user.totp_secret) {
+    const verified = token && speakeasy.totp.verify({
+      secret: user.totp_secret,
+      encoding: 'base32',
+      token
+    });
+    if (!verified) return res.status(401).send('Invalid token');
     req.session.user = username;
     req.session.role = user.role;
     return res.redirect('/');
   }
-  res.status(401).send('Invalid credentials');
+
+  const secret = speakeasy.generateSecret({ name: `whatsapp-bot:${username}` });
+  req.session.temp_secret = secret.base32;
+  req.session.temp_user = username;
+  req.session.temp_role = user.role;
+  const qr = await qrcode.toDataURL(secret.otpauth_url);
+  res.render('setup2fa', { qr, secret: secret.base32 });
+});
+
+app.post('/setup-2fa', async (req, res) => {
+  const { token } = req.body;
+  const secret = req.session.temp_secret;
+  const username = req.session.temp_user;
+  const role = req.session.temp_role;
+  if (!secret || !username) return res.redirect('/login');
+  const verified = speakeasy.totp.verify({ secret, encoding: 'base32', token });
+  if (!verified) return res.status(401).send('Invalid token');
+  await pool.query('UPDATE users SET totp_secret=$1 WHERE username=$2', [secret, username]);
+  req.session.user = username;
+  req.session.role = role;
+  delete req.session.temp_secret;
+  delete req.session.temp_user;
+  delete req.session.temp_role;
+  res.redirect('/');
 });
 
 app.get('/logout', (req, res) => {
