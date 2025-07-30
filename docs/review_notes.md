@@ -189,3 +189,168 @@ const prNumber = typeof pr === 'object' ? pr.number : pr;
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #13)
+**Title**: Improve codex automation workflow
+
+**Branch**: `codex/add-checks-to-qodo-codex-auto.yml` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `github-actions[bot]`
+
+✅ تم تطبيق اقتراحات Qodo Merge Pro تلقائيًا.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13#issuecomment-3137404878)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R57-R64'><strong>Logic Issue</strong></a>
+
+The workflow attempts to add and commit a file that may not exist when no feedback is found, which could cause git operations to fail
+</summary>
+
+```yaml
+- name: Commit feedback file
+  if: steps.gather.outputs.result != ''
+  run: |
+    git config user.name "qodo-bot"
+    git config user.email "qodo@users.noreply.github.com"
+    git add README_QODO_FEEDBACK.md
+    git diff --staged --quiet || git commit -m "docs: update Qodo feedback"
+    git push origin HEAD:${{ github.head_ref }}
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R75-R81'><strong>Missing Condition</strong></a>
+
+The final commit step for Codex updates lacks a condition check and will always run even when no feedback was processed
+</summary>
+
+```yaml
+- name: Commit Codex updates
+  run: |
+    git config user.name "qodo-bot"
+    git config user.email "qodo@users.noreply.github.com"
+    git add -A
+    git diff --staged --quiet || git commit -m "chore: apply Qodo suggestions"
+    git push origin HEAD:${{ github.head_ref }}
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13#issuecomment-3137405204)
+
+---
+
+### 💬 Comment 3 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- 5ff542d -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Handle Codex execution failures properly</summary>
+
+___
+
+**Handle Codex command failures explicitly by checking the exit status. The <br>current implementation doesn't capture if Codex fails during execution, which <br>could lead to silent failures.**
+
+[.github/workflows/qodo-codex-auto.yml [69-73]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R69-R73)
+
+```diff
+ if command -v codex >/dev/null 2>&1; then
+-  codex apply README_QODO_FEEDBACK.md
++  if ! codex apply README_QODO_FEEDBACK.md; then
++    echo "Codex apply failed"
++    exit 1
++  fi
+ else
+   echo "Codex command not found"
++  exit 1
+ fi
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 8</summary>
+
+__
+
+Why: The suggestion correctly identifies that the `codex apply` command's failure is not handled, and proposes adding an exit code to fail the step, which is a critical improvement for workflow reliability.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr><tr><td rowspan=1>Possible issue</td>
+<td>
+
+
+
+<details><summary>Validate extracted PR number format</summary>
+
+___
+
+**Add validation to ensure the extracted PR number is actually numeric. The <br>current code could extract non-numeric values from the URL which would cause API <br>failures.**
+
+[.github/workflows/qodo-codex-auto.yml [33-34]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R33-R34)
+
+```diff
+ const url = context.payload.pull_request_review_comment.pull_request_url;
+-prNumber = url ? url.split('/').pop() : null;
++const extracted = url ? url.split('/').pop() : null;
++prNumber = extracted && !isNaN(extracted) ? parseInt(extracted, 10) : null;
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=1 -->
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion improves robustness by adding a check to ensure the extracted PR number is numeric before use, preventing potential API errors.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/13#issuecomment-3137407782)
+
+---
+
