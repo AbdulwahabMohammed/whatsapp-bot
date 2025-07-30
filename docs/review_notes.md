@@ -230,3 +230,138 @@ Why: The suggestion correctly points out that `express-ejs-layouts` setup should
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #92)
+**Title**: Add header and footer partials
+
+**Branch**: `codex/create-header-and-footer-partials` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/92/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR34-R35'><strong>Missing Closing</strong></a>
+
+The header partial opens a container div but relies on the footer partial to close it, creating a tight coupling between partials that could lead to HTML structure issues if one partial is modified independently.
+</summary>
+
+```txt
+<div class="container">
+
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/92/files#diff-92f5de8ab591ca7b6e7fc2297ffb5335d4d0b7f6fa3d37d99ab0b42a2215b394R1-R1'><strong>Structural Dependency</strong></a>
+
+The footer partial closes a div that was opened in the header partial, creating an implicit dependency that makes the partials less modular and harder to maintain independently.
+</summary>
+
+```txt
+</div>
+<footer class="text-center mt-4 mb-3">
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/92#issuecomment-3135021122)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=2>General</td>
+<td>
+
+
+
+<details><summary>Make page title dynamic</summary>
+
+___
+
+**The hardcoded title should be dynamic to allow different pages to have specific <br>titles. Consider accepting a title variable from the parent template.**
+
+[views/partials/header.ejs [6]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/92/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR6-R6)
+
+```diff
+-<title>WhatsApp Bot Admin</title>
++<title><%= typeof title !== 'undefined' ? title : 'WhatsApp Bot Admin' %></title>
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion correctly identifies that a hardcoded title in a shared header partial is inflexible and proposes a good solution to make it dynamic for different pages.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr><tr><td>
+
+
+
+<details><summary>Make container closure conditional</summary>
+
+___
+
+**The closing <code></div></code> tag assumes the header always opens a container div, creating tight <br>coupling between partials. Consider moving the container div management to <br>individual pages or making it conditional.**
+
+[views/partials/footer.ejs [1-4]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/92/files#diff-92f5de8ab591ca7b6e7fc2297ffb5335d4d0b7f6fa3d37d99ab0b42a2215b394R1-R4)
+
+```diff
++<% if (typeof closeContainer === 'undefined' || closeContainer) { %>
+ </div>
++<% } %>
+ <footer class="text-center mt-4 mb-3">
+   <small>&copy; <%= new Date().getFullYear() %> WhatsApp Bot</small>
+ </footer>
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=1 -->
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion correctly identifies tight coupling between the header and footer partials due to the container `div` and proposes a good solution to increase layout flexibility.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/92#issuecomment-3135022250)
+
+---
+
