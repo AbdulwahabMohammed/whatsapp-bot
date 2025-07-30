@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Broadcast Message</title>
+</head>
+<body>
+<h1>Broadcast Message</h1>
+<a href="/">Back</a>
+<form action="/broadcast" method="post">
+  <label>Organization:
+    <select name="organization_id">
+      <% orgs.forEach(function(o){ %>
+        <option value="<%= o.id %>"><%= o.name %></option>
+      <% }); %>
+    </select>
+  </label><br/>
+  <label>Phones (comma separated):<br/>
+    <textarea name="phones" rows="5" cols="40"></textarea>
+  </label><br/>
+  <label>Text:<br/>
+    <textarea name="text" rows="5" cols="40"></textarea>
+  </label><br/>
+  <button type="submit">Send</button>
+</form>
+</body>
+</html>

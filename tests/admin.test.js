@@ -21,6 +21,7 @@ jest.mock('../src/logger', () => ({
 
 jest.mock('../src/queue', () => ({
   messageQueue: { close: jest.fn(async () => {}) },
+  bulkQueue: { add: jest.fn() },
   getQueueLength: jest.fn(async () => 0)
 }));
 
@@ -94,5 +95,26 @@ describe('admin routes', () => {
     const agent = request.agent(app);
     await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.get('/analytics').expect(200);
+  });
+
+  it('serves broadcast form', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent.get('/broadcast').expect(200);
+  });
+
+  it('queues broadcast message', async () => {
+    const { bulkQueue } = require('../src/queue');
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent
+      .post('/broadcast')
+      .send('organization_id=1&phones=1,2&text=hi')
+      .expect(302);
+    expect(bulkQueue.add).toHaveBeenCalledWith('broadcast', {
+      orgId: 1,
+      text: 'hi',
+      phones: ['1', '2'],
+    });
   });
 });

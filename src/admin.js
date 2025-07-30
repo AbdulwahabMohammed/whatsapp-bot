@@ -9,7 +9,7 @@ const {
   connectionGauge,
   queueLengthGauge,
 } = require('./metrics');
-const { messageQueue, getQueueLength } = require('./queue');
+const { messageQueue, bulkQueue, getQueueLength } = require('./queue');
 const { createAssistant } = require('./assistant');
 const { upload } = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
@@ -231,6 +231,34 @@ app.post('/schedule/new', requireEditor, async (req, res) => {
     'INSERT INTO scheduled_messages (organization_id, phone, text, send_at) VALUES ($1,$2,$3,$4)',
     [organization_id, phone, text, send_at]
   );
+  res.redirect('/');
+});
+
+app.get('/broadcast', requireEditor, async (req, res) => {
+  const orgs = await listOrganizations();
+  res.render('broadcast', { orgs });
+});
+
+app.post('/broadcast', requireEditor, async (req, res) => {
+  const { organization_id, phones, text } = req.body;
+  let list = [];
+  if (phones) {
+    list = phones.split(',').map(p => p.trim()).filter(Boolean);
+  }
+  if (organization_id) {
+    const { rows } = await pool.query(
+      'SELECT DISTINCT customer_phone FROM conversations WHERE organization_id=$1',
+      [organization_id]
+    );
+    list = Array.from(new Set([...list, ...rows.map(r => r.customer_phone)]));
+  }
+  if (list.length) {
+    await bulkQueue.add('broadcast', {
+      orgId: Number(organization_id),
+      text,
+      phones: list,
+    });
+  }
   res.redirect('/');
 });
 
