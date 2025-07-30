@@ -2135,3 +2135,127 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #8)
+**Title**: Refactor upload alert creation
+
+**Branch**: `codex/refactor-alert-creation-in-upload.ejs` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/8/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R11-R23'><strong>Missing Validation</strong></a>
+
+The `createAlert()` function doesn't validate the `type` parameter, which could lead to invalid CSS classes if an unexpected value is passed. Consider adding validation or restricting to known Bootstrap alert types.
+</summary>
+
+```txt
+function createAlert(message, type = 'success') {
+  const div = document.createElement('div');
+  div.className = `alert alert-${type} alert-dismissible fade show`;
+  div.setAttribute('role', 'alert');
+  div.textContent = message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-close';
+  btn.setAttribute('data-bs-dismiss', 'alert');
+  btn.setAttribute('aria-label', 'Close');
+  div.appendChild(btn);
+  return div;
+}
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/8/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R15-R15'><strong>XSS Vulnerability</strong></a>
+
+Using `textContent` is good for preventing XSS, but the function should be documented to clarify that it only accepts plain text messages, not HTML content, to prevent future misuse.
+</summary>
+
+```txt
+div.textContent = message;
+const btn = document.createElement('button');
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/8#issuecomment-3137244964)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- af36ae2 -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>Security</td>
+<td>
+
+
+
+<details><summary>Validate alert type parameter</summary>
+
+___
+
+**The <code>type</code> parameter should be validated against allowed Bootstrap alert types to <br>prevent CSS class injection. Only specific values like 'success', 'danger', <br>'warning', 'info' should be accepted.**
+
+[views/upload.ejs [11-23]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/8/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R11-R23)
+
+```diff
+ function createAlert(message, type = 'success') {
++  const allowedTypes = ['success', 'danger', 'warning', 'info', 'primary', 'secondary', 'light', 'dark'];
++  if (!allowedTypes.includes(type)) {
++    type = 'success';
++  }
+   const div = document.createElement('div');
+   div.className = `alert alert-${type} alert-dismissible fade show`;
+   ...
+ }
+```
+
+
+
+`[To ensure code accuracy, apply this suggestion manually]`
+
+
+<details><summary>Suggestion importance[1-10]: 8</summary>
+
+__
+
+Why: This is a valid security improvement that hardens the new `createAlert` function against potential class injection attacks by validating the `type` parameter against an allowlist.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/8#issuecomment-3137246487)
+
+---
+
