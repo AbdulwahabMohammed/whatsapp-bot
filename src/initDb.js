@@ -55,6 +55,7 @@ async function init() {
       organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
       customer_phone TEXT NOT NULL,
       thread_id TEXT NOT NULL,
+      escalated BOOLEAN DEFAULT FALSE,
       detected_language TEXT,
       summary TEXT,
       created_at TIMESTAMP DEFAULT NOW()
@@ -67,6 +68,10 @@ async function init() {
 
   await pool.query(
     'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS summary TEXT'
+  );
+
+  await pool.query(
+    'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS escalated BOOLEAN DEFAULT FALSE'
   );
 
   await pool.query(`

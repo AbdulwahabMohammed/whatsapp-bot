@@ -34,7 +34,16 @@
 <h2>Conversation Summaries</h2>
 <ul>
 <% summaries.forEach(function(s){ %>
-  <li><strong><%= s.customer_phone %></strong>: <%= s.summary %></li>
+  <li>
+    <strong><%= s.customer_phone %></strong>: <%= s.summary %>
+    <% if (!s.escalated) { %>
+      <form action="/conversations/<%= s.id %>/escalate" method="post" style="display:inline;">
+        <button type="submit">تولي المحادثة</button>
+      </form>
+    <% } else { %>
+      (تم التصعيد)
+    <% } %>
+  </li>
 <% }); %>
 </ul>
 </body>
