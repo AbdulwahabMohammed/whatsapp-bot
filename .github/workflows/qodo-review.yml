@@ -17,6 +17,9 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
+      - name: ⏳ Wait for qodo-merge-pro to comment
+        run: sleep 60
+
       - name: Append qodo-merge-pro comments to docs/review_notes.md
         uses: actions/github-script@v7
         with:
