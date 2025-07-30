@@ -5,7 +5,7 @@
 <% if (!enabled) { %>
   <a class="btn btn-primary" href="/profile/setup-2fa">تفعيل المصادقة الثنائية</a>
 <% } else { %>
-  <form action="/profile/disable-2fa" method="post" class="d-inline">
+  <form action="/profile/disable-2fa" method="post" class="d-inline" data-confirm="Are you sure you want to disable 2FA?">
     <button class="btn btn-danger" type="submit">تعطيل المصادقة الثنائية</button>
   </form>
 <% } %>

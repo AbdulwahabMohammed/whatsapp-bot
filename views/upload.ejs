@@ -1,8 +1,24 @@
 <h1 class="mb-3">Upload Reference File for Organization <%= orgId %></h1>
-<form action="/org/<%= orgId %>/upload" method="post" style="max-width:400px;" class="mb-3">
+<div id="uploadAlert"></div>
+<form id="uploadForm" action="/org/<%= orgId %>/upload" method="post" style="max-width:400px;" class="mb-3">
   <div class="mb-3">
     <label class="form-label">Path</label>
     <input class="form-control" type="text" name="filePath">
   </div>
   <button class="btn btn-primary" type="submit">Upload</button>
 </form>
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = new URLSearchParams(new FormData(form));
+  const res = await fetch(form.action, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: data
+  });
+  const result = await res.json();
+  const alert = document.getElementById('uploadAlert');
+  alert.innerHTML = `<div class="alert alert-success alert-dismissible fade show" role="alert">${result.message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+});
+</script>
