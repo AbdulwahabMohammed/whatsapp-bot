@@ -57,7 +57,10 @@ async function postWebhook (data) {
 }
 
 const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
-const BULK_MESSAGE_DELAY = parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10);
+const BULK_MESSAGE_DELAY = Math.max(
+  0,
+  Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10), 60000)
+);
 
 const sockets = {};
 
