@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FAQ Suggestions</title>
+</head>
+<body>
+<h1>FAQ Suggestions</h1>
+<a href="/">Back</a>
+<table border="1">
+  <tr>
+    <th>Question</th>
+    <th>Count</th>
+    <th></th>
+  </tr>
+  <% faqs.forEach(function(f){ %>
+  <tr>
+    <td><%= f.question %></td>
+    <td><%= f.count %></td>
+    <td>
+      <form action="/faq/<%= f.id %>/delete" method="post">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  <% }); %>
+</table>
+</body>
+</html>

@@ -363,6 +363,18 @@ app.get('/unanswered', requireAdmin, async (req, res) => {
   res.render('unanswered', { alerts: rows });
 });
 
+app.get('/faq', requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT id, question, count FROM faq_suggestions ORDER BY count DESC'
+  );
+  res.render('faq', { faqs: rows });
+});
+
+app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM faq_suggestions WHERE id=$1', [req.params.id]);
+  res.redirect('/faq');
+});
+
 function startAdminServer() {
   const port = process.env.ADMIN_PORT || 3001;
   statusInterval = setInterval(broadcastStatus, 5000);

@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "create-assistant": "node src/scripts/createAssistant.js",
     "upload-file": "node src/scripts/uploadFile.js",
+    "generate-faq": "node src/scripts/generateFaq.js",
     "whatsapp": "node src/whatsappBot.js",
     "admin": "node src/admin.js",
     "worker": "node src/worker.js"
