@@ -1739,3 +1739,117 @@ Why: The suggestion correctly points out that a hardcoded delay for bulk messagi
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #3)
+**Title**: Increase delay between status checks
+
+**Branch**: `codex/modify-delay-for-status-checks` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/3/files#diff-0f4f0343eef0fba0687b522c079a290e6e34e7318b70bc4538e8e6de72134bccR107-R110'><strong>Logic Error</strong></a>
+
+The timeout check occurs before the delay, which means the function may timeout without actually waiting the full intended duration. The delay should be applied before checking the retry limit.
+</summary>
+
+```javascript
+if (attempts >= MAX_RETRIES) {
+  throw new Error('Run ' + run.id + ' did not complete after maximum retries');
+}
+await new Promise(resolve => setTimeout(resolve, delay));
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/3/files#diff-0f4f0343eef0fba0687b522c079a290e6e34e7318b70bc4538e8e6de72134bccR110-R115'><strong>Timing Issue</strong></a>
+
+The delay is increased after each status check, but the first iteration uses the initial 1000ms delay. This means the progressive delay doesn't start immediately, which may not align with the intended exponential backoff behavior.
+</summary>
+
+```javascript
+await new Promise(resolve => setTimeout(resolve, delay));
+
+const current = await retrieveRun(threadId, run.id);
+status = current.status;
+attempts++;
+delay = Math.min(MAX_DELAY, Math.floor(delay * DELAY_GROWTH));
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/3#issuecomment-3136980191)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- d1c7829 -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Fix exponential backoff timing</summary>
+
+___
+
+**The delay is updated after the status check, which means the first retry still <br>uses the initial 1000ms delay. Move the delay update before the setTimeout to <br>ensure exponential backoff starts immediately on the second iteration.**
+
+[src/chat.js [115]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/3/files#diff-0f4f0343eef0fba0687b522c079a290e6e34e7318b70bc4538e8e6de72134bccR115-R115)
+
+```diff
+-delay = Math.min(MAX_DELAY, Math.floor(delay * DELAY_GROWTH));
++if (attempts > 0) {
++  delay = Math.min(MAX_DELAY, Math.floor(delay * DELAY_GROWTH));
++}
++await new Promise(resolve => setTimeout(resolve, delay));
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 2</summary>
+
+__
+
+Why: The suggestion proposes a stylistic refactor, but the original code's exponential backoff logic is already correct and functions as intended, making this change unnecessary.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/3#issuecomment-3136982054)
+
+---
+

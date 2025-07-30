@@ -95,20 +95,24 @@ async function sendMessage (orgId, assistantId, customerPhone, text) {
   });
 
   let status = run.status;
-  const MAX_RETRIES = 60; // ~60 seconds with 1s interval
+  const MAX_RETRIES = 60; // upper bound on how many status checks to perform
+  let delay = 1000;
+  const MAX_DELAY = 5000;
+  const DELAY_GROWTH = 1.2;
   let attempts = 0;
   while (status !== 'completed') {
     if (['failed', 'cancelled'].includes(status)) {
       throw new Error('Run ' + run.id + ' failed with status ' + status);
     }
     if (attempts >= MAX_RETRIES) {
-      throw new Error('Run ' + run.id + ' did not complete within 60 seconds');
+      throw new Error('Run ' + run.id + ' did not complete after maximum retries');
     }
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     const current = await retrieveRun(threadId, run.id);
     status = current.status;
     attempts++;
+    delay = Math.min(MAX_DELAY, Math.floor(delay * DELAY_GROWTH));
   }
 
   const completedRun = await retrieveRun(threadId, run.id);
