@@ -79,6 +79,17 @@ async function init() {
   );
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+      id SERIAL PRIMARY KEY,
+      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+      phone TEXT NOT NULL,
+      text TEXT NOT NULL,
+      send_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS usage_stats (
       id SERIAL PRIMARY KEY,
       organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,

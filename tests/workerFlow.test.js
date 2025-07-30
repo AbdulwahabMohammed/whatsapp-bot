@@ -2,7 +2,8 @@ let handler;
 const mockSock = { ev: { on: jest.fn() }, sendMessage: jest.fn() };
 
 jest.mock('bullmq', () => ({
-  Worker: jest.fn((name, fn) => { handler = fn; })
+  Worker: jest.fn((name, fn) => { handler = fn; }),
+  Queue: jest.fn(() => ({ add: jest.fn(), getWaitingCount: jest.fn() }))
 }));
 
 jest.mock('@whiskeysockets/baileys', () => ({

@@ -184,6 +184,20 @@ app.post('/users/:id/role', requireAdmin, async (req, res) => {
   res.redirect('/users');
 });
 
+app.get('/schedule/new', requireEditor, async (req, res) => {
+  const orgs = await listOrganizations();
+  res.render('newSchedule', { orgs });
+});
+
+app.post('/schedule/new', requireEditor, async (req, res) => {
+  const { organization_id, phone, text, send_at } = req.body;
+  await pool.query(
+    'INSERT INTO scheduled_messages (organization_id, phone, text, send_at) VALUES ($1,$2,$3,$4)',
+    [organization_id, phone, text, send_at]
+  );
+  res.redirect('/');
+});
+
 app.get('/messages', requireAdmin, (req, res) => {
   res.render('messages');
 });
