@@ -110,12 +110,9 @@ app.post('/login', async (req, res) => {
     return res.redirect('/');
   }
 
-  const secret = speakeasy.generateSecret({ name: `whatsapp-bot:${username}` });
-  req.session.temp_secret = secret.base32;
-  req.session.temp_user = username;
-  req.session.temp_role = user.role;
-  const qr = await qrcode.toDataURL(secret.otpauth_url);
-  res.render('setup2fa', { qr, secret: secret.base32 });
+  req.session.user = username;
+  req.session.role = user.role;
+  return res.redirect('/');
 });
 
 app.post('/setup-2fa', async (req, res) => {
@@ -139,6 +136,42 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/login');
   });
+});
+
+app.get('/profile', async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT role, totp_secret FROM users WHERE username=$1',
+    [req.session.user]
+  );
+  const user = rows[0] || {};
+  res.render('profile', {
+    username: req.session.user,
+    role: user.role,
+    enabled: !!user.totp_secret,
+  });
+});
+
+app.get('/profile/setup-2fa', async (req, res) => {
+  const secret = speakeasy.generateSecret({ name: `whatsapp-bot:${req.session.user}` });
+  req.session.temp_secret = secret.base32;
+  const qr = await qrcode.toDataURL(secret.otpauth_url);
+  res.render('enable2fa', { qr, secret: secret.base32 });
+});
+
+app.post('/profile/enable-2fa', async (req, res) => {
+  const { token } = req.body;
+  const secret = req.session.temp_secret;
+  if (!secret) return res.redirect('/profile');
+  const verified = speakeasy.totp.verify({ secret, encoding: 'base32', token });
+  if (!verified) return res.status(401).send('Invalid token');
+  await pool.query('UPDATE users SET totp_secret=$1 WHERE username=$2', [secret, req.session.user]);
+  delete req.session.temp_secret;
+  res.redirect('/profile');
+});
+
+app.post('/profile/disable-2fa', async (req, res) => {
+  await pool.query('UPDATE users SET totp_secret=NULL WHERE username=$1', [req.session.user]);
+  res.redirect('/profile');
 });
 
 app.get('/stats', (req, res) => {

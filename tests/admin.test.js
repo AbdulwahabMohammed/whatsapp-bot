@@ -68,6 +68,59 @@ describe('admin routes', () => {
 
   afterEach(() => {
     pool.query.mockReset();
+    const qrcode = require('qrcode');
+    qrcode.toDataURL.mockReset();
+  });
+
+  it('logs in without 2FA when totp_secret is null', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async text => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: null }] };
+      }
+      return { rows: [] };
+    });
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret').expect(302);
+    const qrcode = require('qrcode');
+    expect(qrcode.toDataURL).not.toHaveBeenCalled();
+  });
+
+  it('enables and disables 2FA from profile', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    let secret = null;
+    pool.query.mockImplementation(async (text, params) => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: secret }] };
+      }
+      if (text.startsWith('SELECT role, totp_secret')) {
+        return { rows: [{ role: 'admin', totp_secret: secret }] };
+      }
+      if (text.startsWith('UPDATE users SET totp_secret=$1')) {
+        secret = params[0];
+        return { rows: [] };
+      }
+      if (text.startsWith('UPDATE users SET totp_secret=NULL')) {
+        secret = null;
+        return { rows: [] };
+      }
+      return { rows: [] };
+    });
+
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret');
+    await agent.get('/profile/setup-2fa').expect(200);
+    await agent.post('/profile/enable-2fa').send('token=123456').expect(302);
+    expect(secret).toBe('AAAA');
+
+    const agent2 = request.agent(app);
+    await agent2.post('/login').send('username=admin&password=secret').expect(401);
+
+    await agent.post('/profile/disable-2fa').expect(302);
+    expect(secret).toBe(null);
+
+    const agent3 = request.agent(app);
+    await agent3.post('/login').send('username=admin&password=secret').expect(302);
   });
 
   it('creates organization', async () => {
