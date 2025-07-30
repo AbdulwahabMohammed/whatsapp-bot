@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
 
       - name: Fetch PR comments
         uses: actions/github-script@v7
@@ -45,4 +48,5 @@ jobs:
           git config user.email "qodo@users.noreply.github.com"
           git add qodo-review.md
           git commit -m "📝 Add Qodo review comments"
-          git push
+          git push origin HEAD:${{ github.head_ref }}
+
