@@ -243,3 +243,159 @@ Why: The suggestion correctly recommends updating `actions/checkout` and `action
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #83)
+**Title**: Add ESLint with Standard config
+
+**Branch**: `codex/add-eslint-with-standard-config` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/83/files#diff-7ae45ad102eab3b6d7e7896acd08c427a9b25b346470d7bc6507b6481575d519R14-R15'><strong>Script Inconsistency</strong></a>
+
+The `worker` script is being moved from the scripts section to a new location, but it's unclear if this is intentional or an error in the diff formatting.
+</summary>
+
+```json
+"worker": "node src/worker.js",
+"lint": "eslint \"src/**\" \"tests/**\""
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/83#issuecomment-3134838915)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## CI Feedback 🧐
+
+#### (Feedback updated until commit https://github.com/AbdulwahabMohammed/whatsapp-bot/commit/3b1f930186337da29e1af75d6093bfa19cfe92e2)
+
+
+A test triggered by this PR failed. Here is an AI-generated analysis of the failure:
+
+<table><tr><td>
+
+**Action:** test</td></tr>
+<tr><td>
+
+**Failed stage:** [Run npm ci](https://github.com/AbdulwahabMohammed/whatsapp-bot/actions/runs/16613700884/job/47001914053) [❌]
+
+</td></tr>
+<tr><td>
+
+**Failure summary:**
+
+The action failed due to a Node.js version compatibility issue. The package <br><code>@whiskeysockets/baileys@6.7.18</code> requires Node.js version 20 or higher, but the runner is using <br>Node.js v18.20.8. The package's engine requirements check script failed with exit code 1, preventing <br>the npm installation from completing.<br>
+
+</td></tr>
+<tr><td>
+
+<details><summary>Relevant error logs:</summary>
+
+
+```yaml
+1:  ##[group]Runner Image Provisioner
+2:  Hosted Compute Agent
+...
+
+262:  npm warn EBADENGINE Unsupported engine {
+263:  npm warn EBADENGINE   package: '@whiskeysockets/baileys@6.7.18',
+264:  npm warn EBADENGINE   required: { node: '>=20.0.0' },
+265:  npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+266:  npm warn EBADENGINE }
+267:  npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+268:  npm warn deprecated npmlog@5.0.1: This package is no longer supported.
+269:  npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+270:  npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+271:  npm warn deprecated gauge@3.0.2: This package is no longer supported.
+272:  npm warn deprecated are-we-there-yet@2.0.0: This package is no longer supported.
+273:  npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+274:  npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+275:  npm warn deprecated glob@8.1.0: Glob versions prior to v9 are no longer supported
+276:  npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+277:  npm error code 1
+278:  npm error path /home/runner/work/whatsapp-bot/whatsapp-bot/node_modules/@whiskeysockets/baileys
+279:  npm error command failed
+280:  npm error command sh -c node ./engine-requirements.js
+281:  npm error ❌ This package requires Node.js 20+ to run reliably.
+282:  npm error    You are using Node.js 18.20.8.
+283:  npm error    Please upgrade to Node.js 20+ to proceed.
+284:  npm error A complete log of this run can be found in: /home/runner/.npm/_logs/2025-07-30T04_46_35_775Z-debug-0.log
+285:  ##[error]Process completed with exit code 1.
+286:  Post job cleanup.
+
+```
+</details></td></tr></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/83#issuecomment-3134839074)
+
+---
+
+### 💬 Comment 3 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Use specific ECMAScript version</summary>
+
+___
+
+**Using "latest" for <code>ecmaVersion</code> can cause inconsistent behavior across different <br>environments and ESLint versions. Specify a concrete ECMAScript version like <br>2021 or 2022 to ensure consistent linting behavior across all development <br>environments.**
+
+[.eslintrc.json [9]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/83/files#diff-6884918dc8291219be508e05e28965b958c734def85324f3b53858ea4702090fR9-R9)
+
+```diff
+-"ecmaVersion": "latest"
++"ecmaVersion": 2021
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 6</summary>
+
+__
+
+Why: This is a good practice to ensure consistent linting behavior across different environments by pinning the `ecmaVersion` instead of using the potentially volatile 'latest'.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/83#issuecomment-3134839523)
+
+---
+
