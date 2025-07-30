@@ -365,3 +365,218 @@ Why: The suggestion correctly identifies tight coupling between the header and f
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #93)
+**Title**: Enhance admin UI with confirmations and alerts
+
+**Branch**: `codex/enhance-user-experience-with-javascript` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R11-R23'><strong>Error Handling</strong></a>
+
+The AJAX upload implementation lacks proper error handling for network failures or server errors. If the fetch request fails or returns a non-200 status, the code will throw an unhandled exception when trying to parse JSON.
+</summary>
+
+```txt
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = new URLSearchParams(new FormData(form));
+  const res = await fetch(form.action, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: data
+  });
+  const result = await res.json();
+  const alert = document.getElementById('uploadAlert');
+  alert.innerHTML = `<div class="alert alert-success alert-dismissible fade show" role="alert">${result.message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+});
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93/files#diff-e27bad8c3f971045f5abe2b4346053b1c7f930ad2a87fbd891468a5955d0bde7R277-R279'><strong>Content Type</strong></a>
+
+The JSON response detection relies on checking the Accept header for exact match with 'application/json', but browsers typically send multiple content types. This could cause the JSON response path to be missed in some cases.
+</summary>
+
+```javascript
+if (req.headers.accept === 'application/json') {
+  return res.json({ ok: true, message: 'File uploaded' });
+}
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93#issuecomment-3135040789)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=2>Security</td>
+<td>
+
+
+
+<details><summary>Escape alert message content</summary>
+
+___
+
+**Escape the <code>alert.message</code> content to prevent XSS attacks. User-controlled data <br>should be HTML-escaped when rendered in templates to prevent malicious script <br>injection.**
+
+[views/partials/header.ejs [35-40]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93/files#diff-482769c023affc08414f4927472243199c2f01e2bc36d41b949752bc6642685fR35-R40)
+
+```diff
+ <% if (alert) { %>
+ <div class="alert alert-<%= alert.type %> alert-dismissible fade show" role="alert">
+-  <%= alert.message %>
++  <%- alert.message %>
+   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+ </div>
+ <% } %>
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 9</summary>
+
+__
+
+Why: The suggestion correctly identifies a potential XSS vulnerability by using `<%= alert.message %>` which does not escape HTML, and correctly proposes using `<%- alert.message %>` to mitigate it.
+
+
+</details></details></td><td align=center>High
+
+</td></tr><tr><td>
+
+
+
+<details><summary>Prevent XSS in alert message</summary>
+
+___
+
+**Use <code>textContent</code> or properly escape the <code>result.message</code> to prevent XSS attacks. <br>Setting <code>innerHTML</code> with unescaped user data can allow script injection if the <br>message contains malicious content.**
+
+[views/upload.ejs [22]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R22-R22)
+
+```diff
+-alert.innerHTML = `<div class="alert alert-success alert-dismissible fade show" role="alert">${result.message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
++const alertDiv = document.createElement('div');
++alertDiv.className = 'alert alert-success alert-dismissible fade show';
++alertDiv.setAttribute('role', 'alert');
++alertDiv.textContent = result.message;
++const closeBtn = document.createElement('button');
++closeBtn.type = 'button';
++closeBtn.className = 'btn-close';
++closeBtn.setAttribute('data-bs-dismiss', 'alert');
++closeBtn.setAttribute('aria-label', 'Close');
++alertDiv.appendChild(closeBtn);
++alert.innerHTML = '';
++alert.appendChild(alertDiv);
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=1 -->
+
+
+<details><summary>Suggestion importance[1-10]: 9</summary>
+
+__
+
+Why: The suggestion correctly identifies a potential XSS vulnerability by using `innerHTML` with unescaped data from `result.message`, which could lead to script injection.
+
+
+</details></details></td><td align=center>High
+
+</td></tr><tr><td rowspan=1>Possible issue</td>
+<td>
+
+
+
+<details><summary>Add error handling for fetch</summary>
+
+___
+
+**Add error handling for the fetch request to handle network failures and non-200 <br>responses. Without error handling, the application will crash if the request <br>fails or returns an error status.**
+
+[views/upload.ejs [11-23]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R11-R23)
+
+```diff
+ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+   e.preventDefault();
+   const form = e.target;
+   const data = new URLSearchParams(new FormData(form));
+-  const res = await fetch(form.action, {
+-    method: 'POST',
+-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+-    body: data
+-  });
+-  const result = await res.json();
+-  const alert = document.getElementById('uploadAlert');
+-  alert.innerHTML = `<div class="alert alert-success alert-dismissible fade show" role="alert">${result.message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
++  try {
++    const res = await fetch(form.action, {
++      method: 'POST',
++      headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
++      body: data
++    });
++    if (!res.ok) throw new Error(`HTTP ${res.status}`);
++    const result = await res.json();
++    const alert = document.getElementById('uploadAlert');
++    alert.innerHTML = `<div class="alert alert-success alert-dismissible fade show" role="alert">${result.message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
++  } catch (error) {
++    const alert = document.getElementById('uploadAlert');
++    alert.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Upload failed. Please try again.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
++  }
+ });
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=2 -->
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion correctly identifies a lack of error handling for the `fetch` call, and the proposed `try...catch` block improves robustness by handling network errors and non-successful HTTP responses.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/93#issuecomment-3135042336)
+
+---
+
