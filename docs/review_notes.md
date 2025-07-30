@@ -1261,3 +1261,54 @@ No code suggestions found for the PR.
 ---
 <!-- FIXED-END alert-xss -->
 
+
+
+---
+
+## 🧠 PR Comments (PR #100)
+**Title**: Fix alert rendering XSS
+
+**Branch**: `codex/fix-alert-message-xss-vulnerability` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/100/files#diff-476539c094370457814d1c760517f59241b848d82d2d19e188ae4f42adc44cffR5-R5'><strong>Security Fix</strong></a>
+
+The change from `<%-` to `<%=` properly escapes HTML content in alert messages, preventing XSS attacks. Verify that this change doesn't break legitimate HTML formatting in alert messages that may be expected by the application.
+</summary>
+
+```txt
+<%= alert.message %>
+<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/100#issuecomment-3135166728)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+No code suggestions found for the PR.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/100#issuecomment-3135166834)
+
+---
+
