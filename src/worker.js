@@ -157,6 +157,44 @@ const worker = new Worker(
   { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
 );
 
+const bulkWorker = new Worker(
+  'bulkMessages',
+  async job => {
+    const { orgId, phones, text } = job.data;
+    const sock = sockets[orgId];
+    if (!sock) {
+      logger.error(`No WhatsApp connection for org ${orgId}`);
+      return;
+    }
+    for (const phone of phones) {
+      try {
+        const { rows } = await pool.query(
+          'SELECT id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+          [orgId, phone]
+        );
+        let conversationId = rows[0]?.id;
+        if (!conversationId) {
+          const thread = await openai.beta.threads.create();
+          const insert = await pool.query(
+            'INSERT INTO conversations (organization_id, customer_phone, thread_id) VALUES ($1,$2,$3) RETURNING id',
+            [orgId, phone, thread.id]
+          );
+          conversationId = insert.rows[0].id;
+        }
+        await pool.query(
+          'INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)',
+          [conversationId, 'admin', text]
+        );
+        await sock.sendMessage(phone, { text });
+        await new Promise(r => setTimeout(r, 500));
+      } catch (err) {
+        logger.error('Failed to send bulk message:', err);
+      }
+    }
+  },
+  { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
+);
+
 async function start() {
   const { rows } = await pool.query('SELECT * FROM organizations WHERE assistant_id IS NOT NULL');
   if (rows.length === 0) {
