@@ -25,3 +25,9 @@
 
 ## 2025-08-02
 - توفير زر لتعطيل المصادقة الثنائية للمستخدمين وإضافة مسار API جديد لذلك.
+
+## 2025-08-03
+- توثيق وحدات `logger.js` و`metrics.js` و`queue.js` و`scheduler.js` في README والوثائق.
+- إضافة متغير `NODE_ENV` إلى `docs/config.md`.
+- تحديث `docs/api.md` بأمر `generate-faq` ومسار `/metrics`.
+- تحديث `docs/architecture.md` لشرح الطابور والعامل والمجدول.
