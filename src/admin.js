@@ -165,8 +165,15 @@ app.get('/org/new', requireEditor, (req, res) => {
 });
 
 app.post('/org/new', requireEditor, async (req, res) => {
-  const { name, phone, instructions, language } = req.body;
-  await createOrganization(name, phone, instructions, language);
+  const { name, phone, instructions, language, working_hours_start, working_hours_end } = req.body;
+  await createOrganization(
+    name,
+    phone,
+    instructions,
+    language,
+    working_hours_start || null,
+    working_hours_end || null
+  );
   res.redirect('/');
 });
 
@@ -192,6 +199,29 @@ app.get('/org/:id/upload', requireEditor, (req, res) => {
 app.post('/org/:id/upload', requireEditor, async (req, res) => {
   const { filePath } = req.body;
   await upload(req.params.id, filePath);
+  res.redirect('/');
+});
+
+app.get('/org/:id/hours', requireEditor, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT name, working_hours_start, working_hours_end FROM organizations WHERE id=$1',
+    [req.params.id]
+  );
+  const org = rows[0] || {};
+  res.render('editHours', {
+    orgId: req.params.id,
+    name: org.name,
+    start: org.working_hours_start || '',
+    end: org.working_hours_end || '',
+  });
+});
+
+app.post('/org/:id/hours', requireEditor, async (req, res) => {
+  const { working_hours_start, working_hours_end } = req.body;
+  await pool.query(
+    'UPDATE organizations SET working_hours_start=$1, working_hours_end=$2 WHERE id=$3',
+    [working_hours_start || null, working_hours_end || null, req.params.id]
+  );
   res.redirect('/');
 });
 

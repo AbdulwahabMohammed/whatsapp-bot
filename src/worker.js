@@ -15,6 +15,32 @@ const { connectionGauge, messageCounter } = require('./metrics');
 const { startScheduler } = require('./scheduler');
 require('dotenv').config();
 
+function withinWorkingHours(start, end) {
+  if (!start || !end) return true;
+  const now = new Date();
+  const [sh, sm] = String(start).split(':');
+  const [eh, em] = String(end).split(':');
+  const s = new Date(now);
+  s.setHours(Number(sh), Number(sm), 0, 0);
+  const e = new Date(now);
+  e.setHours(Number(eh), Number(em), 0, 0);
+  return now >= s && now <= e;
+}
+
+async function getOrCreateConversation(orgId, phone) {
+  const { rows } = await pool.query(
+    'SELECT id, thread_id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
+    [orgId, phone]
+  );
+  if (rows[0]) return rows[0];
+  const thread = await openai.beta.threads.create();
+  const insert = await pool.query(
+    'INSERT INTO conversations (organization_id, customer_phone, thread_id) VALUES ($1,$2,$3) RETURNING *',
+    [orgId, phone, thread.id]
+  );
+  return insert.rows[0];
+}
+
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
 async function postWebhook(data) {
@@ -102,6 +128,38 @@ const worker = new Worker(
       return;
     }
     try {
+      const { rows: orgRows } = await pool.query(
+        'SELECT working_hours_start, working_hours_end, instructions FROM organizations WHERE id=$1',
+        [orgId]
+      );
+      const org = orgRows[0] || {};
+      if (!withinWorkingHours(org.working_hours_start, org.working_hours_end)) {
+        const conv = await getOrCreateConversation(orgId, sender);
+        await pool.query(
+          'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
+          [conv.id, 'user', text, attachmentType, attachmentPath]
+        );
+        await postWebhook({
+          sender,
+          text,
+          timestamp: job.data.receivedAt || Date.now(),
+        });
+        const reply = org.instructions || 'سنعود خلال ساعات العمل';
+        await pool.query(
+          'INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)',
+          [conv.id, 'assistant', reply]
+        );
+        await postWebhook({ sender: 'assistant', text: reply, timestamp: Date.now() });
+        const latency = Date.now() - (job.data.receivedAt || Date.now());
+        await pool.query(
+          'INSERT INTO conversation_stats (conversation_id, response_time_ms) VALUES ($1,$2)',
+          [conv.id, latency]
+        );
+        messageCounter.labels(String(orgId), 'sent').inc();
+        await sock.sendMessage(sender, { text: reply });
+        return;
+      }
+
       const reply = await sendMessage(orgId, assistantId, sender, text);
       if (/لا أفهم|غير واضح/.test(reply)) {
         await pool.query(

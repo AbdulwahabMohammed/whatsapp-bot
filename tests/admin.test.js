@@ -72,7 +72,14 @@ describe('admin routes', () => {
     const agent = request.agent(app);
     await agent.post('/login').send('username=admin&password=secret&token=123456');
     await agent.post('/org/new').send('name=Test&phone=123');
-    expect(createOrganization).toHaveBeenCalledWith('Test', '123', undefined, undefined);
+    expect(createOrganization).toHaveBeenCalledWith(
+      'Test',
+      '123',
+      undefined,
+      undefined,
+      null,
+      null
+    );
   });
 
   it('lists organizations', async () => {
