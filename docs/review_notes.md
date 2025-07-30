@@ -354,3 +354,109 @@ Why: The suggestion improves robustness by adding a check to ensure the extracte
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #15)
+**Title**: Clamp bulk message delay
+
+**Branch**: `codex/update-bulk_message_delay-clamping-logic` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `github-actions[bot]`
+
+✅ تم تطبيق اقتراحات Qodo Merge Pro تلقائيًا.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/15#issuecomment-3137441597)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/15/files#diff-a19812fe5175f5ae8fccdf2c9400b66ea4408f519c4208fded5ae4c3365cac4dR60-R63'><strong>Edge Case</strong></a>
+
+The clamping logic doesn't handle invalid input like NaN from parseInt when BULK_MESSAGE_DELAY contains non-numeric values. This could result in unexpected behavior where Math.max(0, Math.min(NaN, 60000)) returns NaN instead of falling back to the default value.
+</summary>
+
+```javascript
+const BULK_MESSAGE_DELAY = Math.max(
+  0,
+  Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10), 60000)
+);
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/15#issuecomment-3137441875)
+
+---
+
+### 💬 Comment 3 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- 0208362 -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>Possible issue</td>
+<td>
+
+
+
+<details><summary><s>Handle NaN from invalid parsing</s></summary>
+
+___
+
+**Handle invalid environment variable values that result in NaN. When <code>parseInt</code> <br>fails, the result is NaN, which will cause <code>Math.max</code> and <code>Math.min</code> to return NaN, <br>breaking the delay functionality.**
+
+[src/worker.js [60-63]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/15/files#diff-a19812fe5175f5ae8fccdf2c9400b66ea4408f519c4208fded5ae4c3365cac4dR60-R63)
+
+```diff
+ const BULK_MESSAGE_DELAY = Math.max(
+   0,
+-  Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10), 60000)
++  Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10) || 500, 60000)
+ );
+```
+
+
+`[Suggestion processed]`
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: The suggestion correctly identifies that `parseInt` can return `NaN` if the environment variable is invalid, and the proposed fix using `|| 500` robustly handles this edge case by providing a default value.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/15#issuecomment-3137442666)
+
+---
+
