@@ -31,6 +31,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'secret',
@@ -38,6 +39,17 @@ app.use(
     saveUninitialized: false,
   })
 );
+
+// expose alert stored in session
+app.use((req, res, next) => {
+  if (req.session.alert) {
+    res.locals.alert = req.session.alert;
+    delete req.session.alert;
+  } else {
+    res.locals.alert = null;
+  }
+  next();
+});
 
 function requireAdmin(req, res, next) {
   if (req.session.role === 'admin') return next();
@@ -203,6 +215,7 @@ app.post('/profile/enable-2fa', requireLogin, async (req, res) => {
 
 app.post('/profile/disable-2fa', requireLogin, async (req, res) => {
   await pool.query('UPDATE users SET totp_secret=NULL WHERE username=$1', [req.session.user]);
+  req.session.alert = { type: 'success', message: '2FA disabled' };
   res.redirect('/profile');
 });
 
@@ -261,6 +274,10 @@ app.get('/org/:id/upload', requireEditor, (req, res) => {
 app.post('/org/:id/upload', requireEditor, async (req, res) => {
   const { filePath } = req.body;
   await upload(req.params.id, filePath);
+  if (req.headers.accept === 'application/json') {
+    return res.json({ ok: true, message: 'File uploaded' });
+  }
+  req.session.alert = { type: 'success', message: 'File uploaded' };
   res.redirect('/');
 });
 
@@ -314,6 +331,7 @@ app.post('/users/:id/role', requireAdmin, async (req, res) => {
 
 app.post('/users/:id/disable-2fa', requireAdmin, async (req, res) => {
   await pool.query('UPDATE users SET totp_secret=NULL WHERE id=$1', [req.params.id]);
+  req.session.alert = { type: 'success', message: '2FA disabled for user' };
   res.redirect('/users');
 });
 
@@ -474,6 +492,7 @@ app.get('/faq', requireAdmin, async (req, res) => {
 
 app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
   await pool.query('DELETE FROM faq_suggestions WHERE id=$1', [req.params.id]);
+  req.session.alert = { type: 'success', message: 'FAQ entry deleted' };
   res.redirect('/faq');
 });
 

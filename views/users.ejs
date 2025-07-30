@@ -22,7 +22,7 @@
         </form>
       </td>
       <td>
-        <form action="/users/<%= u.id %>/disable-2fa" method="post" class="d-inline">
+        <form action="/users/<%= u.id %>/disable-2fa" method="post" class="d-inline" data-confirm="Disable 2FA for this user?">
           <button class="btn btn-sm btn-warning" type="submit">Disable 2FA</button>
         </form>
       </td>

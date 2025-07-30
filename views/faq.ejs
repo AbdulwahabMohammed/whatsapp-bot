@@ -13,7 +13,7 @@
       <td><%= f.question %></td>
       <td><%= f.count %></td>
       <td>
-        <form action="/faq/<%= f.id %>/delete" method="post" class="d-inline">
+        <form action="/faq/<%= f.id %>/delete" method="post" class="d-inline" data-confirm="Delete this suggestion?">
           <button class="btn btn-sm btn-danger" type="submit">Delete</button>
         </form>
       </td>
