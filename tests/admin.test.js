@@ -126,6 +126,10 @@ describe('admin routes', () => {
     await agent.get('/profile/setup-2fa').expect(302);
     await agent.post('/profile/enable-2fa').send('token=111111').expect(302);
     expect(secret).toBe('AAAA');
+    const updates = pool.query.mock.calls.filter(c =>
+      c[0].startsWith('UPDATE users SET totp_secret=$1')
+    );
+    expect(updates.length).toBe(1);
 
     const agent2 = request.agent(app);
     await agent2.post('/login').send('username=admin&password=secret').expect(401);

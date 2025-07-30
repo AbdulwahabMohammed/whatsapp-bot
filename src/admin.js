@@ -171,6 +171,14 @@ app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
 app.post('/profile/enable-2fa', requireLogin, async (req, res) => {
   const { token } = req.body;
   const secret = req.session.temp_secret;
+  const { rows } = await pool.query(
+    'SELECT totp_secret FROM users WHERE username=$1',
+    [req.session.user]
+  );
+  if (rows[0]?.totp_secret) {
+    delete req.session.temp_secret;
+    return res.redirect('/profile');
+  }
   if (!secret) return res.redirect('/profile');
   const verified = speakeasy.totp.verify({ secret, encoding: 'base32', token });
   if (!verified) return res.status(401).send('Invalid token');
