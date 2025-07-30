@@ -94,6 +94,25 @@ describe('admin routes', () => {
     expect(qrcode.toDataURL).not.toHaveBeenCalled();
   });
 
+  it('returns 500 if setup query fails', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async text => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: null }] };
+      }
+      if (text.startsWith('SELECT totp_secret FROM users')) {
+        throw new Error('fail');
+      }
+      return { rows: [] };
+    });
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret').expect(302);
+    const logger = require('../src/logger');
+    logger.error.mockClear();
+    await agent.get('/profile/setup-2fa').expect(500);
+    expect(logger.error).toHaveBeenCalled();
+  });
+
   it('enables and disables 2FA from profile', async () => {
     const hash = bcrypt.hashSync('secret', 10);
     let secret = null;
