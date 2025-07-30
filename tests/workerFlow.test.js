@@ -1,4 +1,5 @@
 let handlers;
+const path = require('path');
 const mockSock = { ev: { on: jest.fn() }, sendMessage: jest.fn() };
 
 jest.mock('bullmq', () => {
@@ -49,6 +50,7 @@ describe('worker message flow', () => {
 
   afterEach(() => {
     delete global.fetch;
+    require('../src/scheduler').stopScheduler();
   });
 
   test('sends reply via WhatsApp', async () => {
@@ -74,8 +76,9 @@ describe('worker message flow', () => {
         replyAttachmentPath: 'uploads/pic.jpg',
       },
     });
+    const attachmentPath = path.join('uploads', 'pic.jpg');
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', {
-      image: { url: expect.stringContaining('uploads/pic.jpg') },
+      image: { url: expect.stringContaining(attachmentPath) },
       caption: 'file',
     });
   });
