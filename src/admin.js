@@ -144,16 +144,22 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/profile', requireLogin, async (req, res) => {
-  const { rows } = await pool.query(
-    'SELECT role, totp_secret FROM users WHERE username=$1',
-    [req.session.user]
-  );
-  const user = rows[0] || {};
-  res.render('profile', {
-    username: req.session.user,
-    role: user.role,
-    enabled: !!user.totp_secret,
-  });
+  try {
+    const { rows } = await pool.query(
+      'SELECT role, totp_secret FROM users WHERE username=$1',
+      [req.session.user]
+    );
+    const user = rows[0] || {};
+    res.render('profile', {
+      username: req.session.user,
+      role: user.role,
+      enabled: !!user.totp_secret,
+    });
+  } catch (err) {
+    if (req.session.temp_secret) delete req.session.temp_secret;
+    logger.error('2FA setup failed:', err);
+    res.status(500).send('Failed to load profile. Please try again.');
+  }
 });
 
 app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
@@ -168,8 +174,9 @@ app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
     const qr = await qrcode.toDataURL(secret.otpauth_url);
     res.render('enable2fa', { qr, secret: secret.base32 });
   } catch (err) {
-    logger.error(err.message);
-    res.status(500).send('Error setting up 2FA');
+    if (req.session.temp_secret) delete req.session.temp_secret;
+    logger.error('2FA setup failed:', err);
+    res.status(500).send('Failed to setup 2FA. Please try again.');
   }
 });
 
