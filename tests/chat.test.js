@@ -43,6 +43,9 @@ jest.mock('../src/db', () => {
 });
 
 describe('sendMessage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
   it('resolves with the reply text', async () => {
     await expect(sendMessage(1, 'a1', '123', 'hi')).resolves.toBe('mock-reply');
     expect(openai.chat.completions.create).toHaveBeenCalled();
@@ -50,5 +53,10 @@ describe('sendMessage', () => {
       assistant_id: 'a1',
       instructions: 'Please respond in en'
     });
+  });
+
+  it('returns null when text is empty', async () => {
+    await expect(sendMessage(1, 'a1', '123', '')).resolves.toBeNull();
+    expect(openai.chat.completions.create).not.toHaveBeenCalled();
   });
 });
