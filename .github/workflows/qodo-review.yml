@@ -40,7 +40,16 @@ jobs:
               issue_number: prNumber
             });
 
-            const qodoComments = comments.filter(c => c.user.login === 'qodo-merge-pro');
+            // استخراج تعليقات GitHub App (qodo-merge-pro)
+            const qodoComments = comments.filter(c =>
+              c.user?.type === 'Bot' &&
+              c.author_association === 'APP' &&
+              (
+                c.user.login.includes('qodo') ||
+                c.body.includes('Qodo Merge Pro')
+              )
+            );
+
             let newContent = `\n\n---\n\n## 🧠 Qodo Review Comments (PR #${prNumber})\n`;
             newContent += `**Title**: ${prTitle}\n\n`;
             newContent += `**Branch**: \`${prBranch}\` &nbsp;&nbsp; 📅 **Date**: ${currentDate}\n\n`;
