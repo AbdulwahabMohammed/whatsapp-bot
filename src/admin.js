@@ -28,7 +28,6 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'secret',
@@ -475,39 +474,6 @@ app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
   res.redirect('/faq');
 });
 
-app.get('/api/orgs', requireLogin, async (req, res) => {
-  const orgs = await listOrganizations();
-  res.json(orgs);
-});
-
-app.get('/api/users', requireAdmin, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, role FROM users ORDER BY id');
-  res.json(rows);
-});
-
-app.post('/api/messages', requireAdmin, async (req, res) => {
-  const { phone, from, to } = req.body;
-  const conditions = [];
-  const params = [];
-  let idx = 1;
-  if (phone) { conditions.push(`c.customer_phone=$${idx++}`); params.push(phone); }
-  if (from) { conditions.push(`m.created_at >= $${idx++}`); params.push(from); }
-  if (to) { conditions.push(`m.created_at <= $${idx++}`); params.push(to); }
-  let query =
-    'SELECT m.sender, m.text, m.created_at, c.customer_phone, o.name AS organization ' +
-    'FROM messages m JOIN conversations c ON m.conversation_id=c.id ' +
-    'JOIN organizations o ON c.organization_id=o.id';
-  if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
-  query += ' ORDER BY m.created_at DESC LIMIT 100';
-  const { rows } = await pool.query(query, params);
-  res.json(rows);
-});
-app.use((req, res, next) => {
-  if (req.method === "GET" && req.accepts("html") && !req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
-    return res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-  }
-  next();
-});
 function startAdminServer() {
   if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'secret') {
     logger.error('SESSION_SECRET must be set and not equal to "secret"');
