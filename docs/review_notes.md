@@ -157,3 +157,13 @@ Why: The suggestion correctly identifies that clearing `req.session.temp_secret`
 - [ ] More <!-- /improve --more_suggestions=true -->
 
 </td><td></td></tr></tbody></table>
+
+
+---
+
+## 🧠 Qodo Review Comments (PR #79)
+**Title**: Improve review notes instructions
+
+**Branch**: `codex/update-readme-for-review-notes-requirement` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+_❌ No comments from qodo-merge-pro found._
