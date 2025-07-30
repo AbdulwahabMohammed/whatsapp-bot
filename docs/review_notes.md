@@ -1019,3 +1019,95 @@ Why: The suggestion correctly identifies significant code duplication for alert 
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #97)
+**Title**: Fix middleware order in admin.js
+
+**Branch**: `codex/move-express-ejs-layouts-configuration` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/97/files#diff-e27bad8c3f971045f5abe2b4346053b1c7f930ad2a87fbd891468a5955d0bde7R29-R30'><strong>Middleware Order</strong></a>
+
+Verify that moving express-ejs-layouts middleware after view engine setup resolves the intended issue and doesn't break existing functionality. The change appears correct as layouts typically need the view engine to be configured first.
+</summary>
+
+```javascript
+app.use(expressLayouts);
+app.set('layout', 'layout');
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/97#issuecomment-3135113632)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Fix middleware configuration order</summary>
+
+___
+
+**The <code>expressLayouts</code> middleware should be configured after setting both the view <br>engine and views directory. This ensures the layout system has access to the <br>complete view configuration before initialization.**
+
+[src/admin.js [27-30]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/97/files#diff-e27bad8c3f971045f5abe2b4346053b1c7f930ad2a87fbd891468a5955d0bde7R27-R30)
+
+```diff
+ app.set('view engine', 'ejs');
+ app.set('views', path.join(__dirname, '../views'));
++app.set('layout', 'layout');
+ app.use(expressLayouts);
+-app.set('layout', 'layout');
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 2</summary>
+
+__
+
+Why: The suggestion proposes a minor reordering of `app.use(expressLayouts)` and `app.set('layout', 'layout')` which has no functional impact, as the code in the PR is already correct.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/97#issuecomment-3135114869)
+
+---
+
