@@ -18,7 +18,7 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - name: ⏳ Wait for any bots or reviewers to comment
-        run: sleep 60
+        run: sleep 30
 
       - name: Append all PR comments to docs/review_notes.md
         uses: actions/github-script@v7
