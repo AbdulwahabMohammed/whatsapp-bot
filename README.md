@@ -78,6 +78,9 @@
    ```bash
    npm run worker
    ```
+   **ملاحظة:** يجب عدم تشغيل `npm run whatsapp` و`npm run worker` في الوقت نفسه
+   للحساب ذاته، لأن مكتبة Baileys ستقطع الاتصال برسالة "Stream Errored
+   (conflict)" عند اكتشاف تعارض.
 
 10. توليد اقتراحات الأسئلة المتكررة:
    ```bash
