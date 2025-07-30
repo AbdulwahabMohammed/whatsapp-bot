@@ -16,19 +16,19 @@ jest.mock('../src/openai', () => {
                 ]
               }
             ]
-          })),
+          }))
         },
         runs: {
           create: jest.fn(async () => ({ id: 'r1', status: 'completed' })),
-          retrieve: jest.fn(async () => ({ status: 'completed', usage: { prompt_tokens: 5, completion_tokens: 7 } })),
-        },
-      },
+          retrieve: jest.fn(async () => ({ status: 'completed', usage: { prompt_tokens: 5, completion_tokens: 7 } }))
+        }
+      }
     },
     chat: {
       completions: {
-        create: jest.fn(async () => ({ choices: [{ message: { content: 'en' } }] })),
-      },
-    },
+        create: jest.fn(async () => ({ choices: [{ message: { content: 'en' } }] }))
+      }
+    }
   };
 });
 
@@ -48,7 +48,7 @@ describe('sendMessage', () => {
     expect(openai.chat.completions.create).toHaveBeenCalled();
     expect(openai.beta.threads.runs.create).toHaveBeenCalledWith('t1', {
       assistant_id: 'a1',
-      instructions: 'Please respond in en',
+      instructions: 'Please respond in en'
     });
   });
 });

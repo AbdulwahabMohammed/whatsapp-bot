@@ -1,7 +1,7 @@
 const {
   default: makeWASocket,
   useMultiFileAuthState,
-  DisconnectReason,
+  DisconnectReason
 } = require('@whiskeysockets/baileys');
 const { downloadMediaMessage, getContentType } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
@@ -14,7 +14,7 @@ const logger = require('./logger');
 const { connectionGauge, messageCounter } = require('./metrics');
 require('dotenv').config();
 
-async function startForOrg(org, attempt = 0) {
+async function startForOrg (org, attempt = 0) {
   if (!org.assistant_id) {
     throw new Error(`Organization ${org.id} does not have an assistant`);
   }
@@ -25,7 +25,7 @@ async function startForOrg(org, attempt = 0) {
 
   const { state, saveCreds } = await useMultiFileAuthState(`auth-${org.id}`);
   const sock = makeWASocket({
-    auth: state,
+    auth: state
   });
 
   sock.ev.on('connection.update', update => {
@@ -69,7 +69,7 @@ async function startForOrg(org, attempt = 0) {
     for (const msg of messages) {
       if (!msg.message || msg.key.fromMe) continue;
       const sender = msg.key.remoteJid;
-      let text =
+      const text =
         msg.message.conversation ||
         msg.message.extendedTextMessage?.text ||
         msg.message.imageMessage?.caption ||
@@ -112,7 +112,7 @@ async function startForOrg(org, attempt = 0) {
           text,
           attachmentType,
           attachmentPath,
-          receivedAt: Date.now(),
+          receivedAt: Date.now()
         });
       } catch (err) {
         logger.error('Failed to queue message:', err);
@@ -121,7 +121,7 @@ async function startForOrg(org, attempt = 0) {
   });
 }
 
-async function start() {
+async function start () {
   const { rows } = await pool.query('SELECT * FROM organizations WHERE assistant_id IS NOT NULL');
   if (rows.length === 0) {
     throw new Error('No organizations with assistants found');

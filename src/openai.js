@@ -23,7 +23,7 @@ if (!key || !key.startsWith('sk-') || key.length < 40) {
 }
 
 const openai = new OpenAI({
-  apiKey: key,
+  apiKey: key
 });
 
 module.exports = openai;

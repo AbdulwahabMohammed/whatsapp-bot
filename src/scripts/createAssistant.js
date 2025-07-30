@@ -1,7 +1,7 @@
 const { createAssistant } = require('../assistant');
 const logger = require('../logger');
 
-async function main() {
+async function main () {
   const orgId = process.argv[2];
   if (!orgId) {
     logger.error('Usage: node src/scripts/createAssistant.js <organizationId>');

@@ -1,7 +1,7 @@
 const pool = require('../db');
 const logger = require('../logger');
 
-async function generateFaq(limit = 20) {
+async function generateFaq (limit = 20) {
   const { rows } = await pool.query(
     `SELECT lower(trim(text)) AS question, COUNT(*) AS count
        FROM messages
@@ -21,7 +21,7 @@ async function generateFaq(limit = 20) {
   logger.info('FAQ suggestions generated');
 }
 
-async function main() {
+async function main () {
   await generateFaq();
   process.exit();
 }

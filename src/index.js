@@ -4,7 +4,7 @@ const logger = require('./logger');
 /**
  * Create an organization entry in the database.
  */
-async function createOrganization(
+async function createOrganization (
   name,
   phone,
   instructions,
@@ -19,12 +19,12 @@ async function createOrganization(
   return rows[0];
 }
 
-async function listOrganizations() {
+async function listOrganizations () {
   const { rows } = await pool.query('SELECT * FROM organizations');
   return rows;
 }
 
-async function main() {
+async function main () {
   const org = await createOrganization('Acme Corp', '+123456789', null);
   logger.info('Organization created:', org);
 

@@ -1,7 +1,7 @@
 const {
   default: makeWASocket,
   useMultiFileAuthState,
-  DisconnectReason,
+  DisconnectReason
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
@@ -15,7 +15,7 @@ const { connectionGauge, messageCounter } = require('./metrics');
 const { startScheduler } = require('./scheduler');
 require('dotenv').config();
 
-function withinWorkingHours(start, end) {
+function withinWorkingHours (start, end) {
   if (!start || !end) return true;
   const now = new Date();
   const [sh, sm] = String(start).split(':');
@@ -27,7 +27,7 @@ function withinWorkingHours(start, end) {
   return now >= s && now <= e;
 }
 
-async function getOrCreateConversation(orgId, phone) {
+async function getOrCreateConversation (orgId, phone) {
   const { rows } = await pool.query(
     'SELECT id, thread_id, escalated FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
     [orgId, phone]
@@ -43,13 +43,13 @@ async function getOrCreateConversation(orgId, phone) {
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
-async function postWebhook(data) {
+async function postWebhook (data) {
   if (!WEBHOOK_URL) return;
   try {
     await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(data)
     });
   } catch (err) {
     logger.error('Failed to send webhook:', err);
@@ -60,7 +60,7 @@ const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
 
 const sockets = {};
 
-async function startForOrg(org, attempt = 0) {
+async function startForOrg (org, attempt = 0) {
   if (!org.assistant_id) {
     throw new Error(`Organization ${org.id} does not have an assistant`);
   }
@@ -109,6 +109,7 @@ async function startForOrg(org, attempt = 0) {
   sock.ev.on('creds.update', saveCreds);
 }
 
+// eslint-disable-next-line no-unused-vars
 const worker = new Worker(
   'messages',
   async job => {
@@ -120,7 +121,7 @@ const worker = new Worker(
       attachmentType,
       attachmentPath,
       replyAttachmentType,
-      replyAttachmentPath,
+      replyAttachmentPath
     } = job.data;
     const sock = sockets[orgId];
     if (!sock) {
@@ -142,7 +143,7 @@ const worker = new Worker(
         await postWebhook({
           sender,
           text,
-          timestamp: job.data.receivedAt || Date.now(),
+          timestamp: job.data.receivedAt || Date.now()
         });
         return;
       }
@@ -155,7 +156,7 @@ const worker = new Worker(
         await postWebhook({
           sender,
           text,
-          timestamp: job.data.receivedAt || Date.now(),
+          timestamp: job.data.receivedAt || Date.now()
         });
         const reply = org.instructions || 'سنعود خلال ساعات العمل';
         await pool.query(
@@ -189,7 +190,7 @@ const worker = new Worker(
         await postWebhook({
           sender,
           text,
-          timestamp: job.data.receivedAt || Date.now(),
+          timestamp: job.data.receivedAt || Date.now()
         });
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
@@ -198,7 +199,7 @@ const worker = new Worker(
         await postWebhook({
           sender: 'assistant',
           text: reply,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         });
 
         const latency = Date.now() - (job.data.receivedAt || Date.now());
@@ -238,12 +239,12 @@ const worker = new Worker(
         if (replyAttachmentType === 'image') {
           content = {
             image: { url: path.join(__dirname, '..', replyAttachmentPath) },
-            caption: reply,
+            caption: reply
           };
         } else if (replyAttachmentType === 'document') {
           content = {
             document: { url: path.join(__dirname, '..', replyAttachmentPath) },
-            caption: reply,
+            caption: reply
           };
         }
       }
@@ -255,6 +256,7 @@ const worker = new Worker(
   { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
 );
 
+// eslint-disable-next-line no-unused-vars
 const bulkWorker = new Worker(
   'bulkMessages',
   async job => {
@@ -286,10 +288,10 @@ const bulkWorker = new Worker(
         await postWebhook({
           sender: 'admin',
           text,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         });
         await sock.sendMessage(phone, { text });
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (err) {
         logger.error('Failed to send bulk message:', err);
       }
@@ -298,7 +300,7 @@ const bulkWorker = new Worker(
   { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
 );
 
-async function start() {
+async function start () {
   const { rows } = await pool.query('SELECT * FROM organizations WHERE assistant_id IS NOT NULL');
   if (rows.length === 0) {
     throw new Error('No organizations with assistants found');
