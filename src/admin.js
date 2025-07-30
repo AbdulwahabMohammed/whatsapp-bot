@@ -356,6 +356,13 @@ app.get('/analytics', requireAdmin, async (req, res) => {
   res.render('analytics', { stats: rows });
 });
 
+app.get('/unanswered', requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT phone, message, created_at FROM unanswered_questions ORDER BY created_at DESC'
+  );
+  res.render('unanswered', { alerts: rows });
+});
+
 function startAdminServer() {
   const port = process.env.ADMIN_PORT || 3001;
   statusInterval = setInterval(broadcastStatus, 5000);

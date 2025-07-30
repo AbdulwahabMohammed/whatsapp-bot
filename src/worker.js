@@ -88,6 +88,12 @@ const worker = new Worker(
     }
     try {
       const reply = await sendMessage(orgId, assistantId, sender, text);
+      if (/لا أفهم|غير واضح/.test(reply)) {
+        await pool.query(
+          'INSERT INTO unanswered_questions (phone, message) VALUES ($1,$2)',
+          [sender, text]
+        );
+      }
       const { rows } = await pool.query(
         'SELECT id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
         [orgId, sender]

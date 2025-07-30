@@ -117,4 +117,10 @@ describe('admin routes', () => {
       phones: ['1', '2'],
     });
   });
+
+  it('serves unanswered questions page', async () => {
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent.get('/unanswered').expect(200);
+  });
 });
