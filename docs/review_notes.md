@@ -1946,3 +1946,141 @@ Why: The suggestion correctly identifies that the `BULK_MESSAGE_DELAY` from the 
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #5)
+**Title**: Check upload response before parsing JSON
+
+**Branch**: `pz9k32-codex/update-response-handling-in-upload.ejs` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/5/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R23-R41'><strong>Logic Error</strong></a>
+
+The error handling logic attempts to parse JSON from response text after already checking if response is not ok, but then tries to access `result.message` in the success path which may not exist if the response was parsed as text instead of JSON.
+</summary>
+
+```txt
+if (!res.ok) {
+  const text = await res.text();
+  let message = text;
+  try {
+    const data = JSON.parse(text);
+    message = data.message || message;
+  } catch {}
+  throw new Error(message || 'Upload failed');
+}
+let result;
+const type = res.headers.get('content-type') || '';
+if (type.includes('application/json')) {
+  result = await res.json();
+} else {
+  result = { message: await res.text() };
+}
+const div = document.createElement('div');
+div.className = 'alert alert-success alert-dismissible fade show';
+div.setAttribute('role', 'alert');
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/5/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R34-R38'><strong>Missing Validation</strong></a>
+
+The success message display assumes `result.message` exists, but when content-type is not JSON, the result object is created with a `message` property from text response without validating if the text is meaningful or empty.
+</summary>
+
+```txt
+if (type.includes('application/json')) {
+  result = await res.json();
+} else {
+  result = { message: await res.text() };
+}
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/5#issuecomment-3137098413)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- 078eed7 -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=1>General</td>
+<td>
+
+
+
+<details><summary>Fix error message fallback logic</summary>
+
+___
+
+**The fallback message should use the original text when <code>data.message</code> is falsy, <br>not when it's truthy. Currently, if JSON parsing succeeds but <code>data.message</code> is <br>empty/null, it falls back to the original text, which may not be user-friendly.**
+
+[views/upload.ejs [23-31]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/5/files#diff-b69ac8622add25c4bf680301d8606e434250432069f023049004a6c3a68b22d5R23-R31)
+
+```diff
+ if (!res.ok) {
+   const text = await res.text();
+-  let message = text;
++  let message = 'Upload failed';
+   try {
+     const data = JSON.parse(text);
+-    message = data.message || message;
+-  } catch {}
+-  throw new Error(message || 'Upload failed');
++    message = data.message || text || 'Upload failed';
++  } catch {
++    message = text || 'Upload failed';
++  }
++  throw new Error(message);
+ }
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=0 -->
+
+
+<details><summary>Suggestion importance[1-10]: 4</summary>
+
+__
+
+Why: The suggestion correctly identifies a minor weakness in the error message fallback logic and proposes a slightly more robust implementation.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/5#issuecomment-3137101257)
+
+---
+
