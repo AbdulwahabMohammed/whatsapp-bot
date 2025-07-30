@@ -44,8 +44,7 @@ jobs:
               content += `🔗 [View in GitHub](${c.html_url})\n\n`;
             });
 
-            if (!fs.existsSync('./.qodo')) fs.mkdirSync('./.qodo');
-            fs.writeFileSync('./.qodo/qodo-review.md', content);
+            fs.writeFileSync('qodo-review.md', content);
 
       - name: Commit and push Qodo comments to main
         run: |
