@@ -266,3 +266,62 @@ The action failed because the git command <code>git config user.name "qodo-bot"<
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #18)
+**Title**: Fix Codex commit step
+
+**Branch**: `codex/update-github-actions-workflow-for-conditional-commit` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/18/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R112-R112'><strong>Logic Issue</strong></a>
+
+The conditional check uses `steps.gather.outputs.result != ''` but it's unclear if this step ID and output exist in the workflow. The gather step should be verified to ensure it properly sets this output when feedback is found.
+</summary>
+
+```yaml
+if: steps.gather.outputs.result != ''
+run: |
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/18#issuecomment-3137584983)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+No code suggestions found for the PR.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/18#issuecomment-3137585628)
+
+---
+
+### 💬 Comment 3 by `github-actions[bot]`
+
+✅ تم تطبيق اقتراحات Qodo Merge Pro تلقائيًا.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/18#issuecomment-3137586332)
+
+---
+
