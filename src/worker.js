@@ -12,6 +12,7 @@ const logger = require('./logger');
 const openai = require('./openai');
 const path = require('path');
 const { connectionGauge, messageCounter } = require('./metrics');
+const { startScheduler } = require('./scheduler');
 require('dotenv').config();
 
 const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
@@ -171,3 +172,5 @@ async function start() {
 start().catch(err => {
   logger.error('Failed to start worker:', err);
 });
+
+startScheduler();
