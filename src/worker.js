@@ -179,6 +179,21 @@ const worker = new Worker(
       }
 
       const reply = await sendMessage(orgId, assistantId, sender, text);
+      if (reply === null) {
+        const conversationId = conv.id;
+        if (conversationId) {
+          await pool.query(
+            'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
+            [conversationId, 'user', text, attachmentType, attachmentPath]
+          );
+          await postWebhook({
+            sender,
+            text,
+            timestamp: job.data.receivedAt || Date.now()
+          });
+        }
+        return;
+      }
       if (/لا أفهم|غير واضح/.test(reply)) {
         await pool.query(
           'INSERT INTO unanswered_questions (phone, message) VALUES ($1,$2)',

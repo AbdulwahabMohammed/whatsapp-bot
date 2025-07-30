@@ -46,6 +46,10 @@ async function getOrCreateConversation (orgId, customerPhone) {
 }
 
 async function sendMessage (orgId, assistantId, customerPhone, text) {
+  if (!text || !String(text).trim()) {
+    logger.warn('Empty text provided to sendMessage, skipping OpenAI call');
+    return null;
+  }
   const conv = await getOrCreateConversation(orgId, customerPhone);
 
   if (conv.escalated) {
