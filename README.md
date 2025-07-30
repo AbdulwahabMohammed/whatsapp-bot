@@ -2,7 +2,7 @@
 
 ### حالة CI
 يتم تشغيل الاختبارات تلقائيًا عبر GitHub Actions على كل `push` أو `pull_request`.
-[![Node.js CI](https://github.com/OWNER/REPO/actions/workflows/node-test.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/node-test.yml)
+[![Node.js CI](https://github.com/AbdulwahabMohammed/whatsapp-bot/actions/workflows/node-test.yml/badge.svg)](https://github.com/AbdulwahabMohammed/whatsapp-bot/actions/workflows/node-test.yml)
 
 ## مقدمة
 هذا المشروع يوفر هيكلًا لبناء بوت خدمة عملاء على واتساب، معتمد على OpenAI Assistants API.
