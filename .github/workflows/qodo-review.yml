@@ -17,38 +17,57 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Fetch PR comments and create qodo-review.md in root
+      - name: Append qodo-merge-pro comments to docs/review_notes.md
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const prNumber = context.payload.pull_request.number;
-            const { data: comments } = await github.rest.pulls.listReviewComments({
+            const path = require('path');
+
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+            const prTitle = pr.title;
+            const prBranch = pr.head.ref;
+            const currentDate = new Date().toISOString().split('T')[0];
+
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: prNumber
+              issue_number: prNumber
             });
 
             const qodoComments = comments.filter(c => c.user.login === 'qodo-merge-pro');
-            let content = `# Qodo Review Comments (PR #${prNumber})\n\n`;
+            let newContent = `\n\n---\n\n## 🧠 Qodo Review Comments (PR #${prNumber})\n`;
+            newContent += `**Title**: ${prTitle}\n\n`;
+            newContent += `**Branch**: \`${prBranch}\` &nbsp;&nbsp; 📅 **Date**: ${currentDate}\n\n`;
 
             if (qodoComments.length === 0) {
-              content += '_❌ No comments from qodo-merge-pro found._\n';
+              newContent += '_❌ No comments from qodo-merge-pro found._\n';
             } else {
               qodoComments.forEach((c, i) => {
-                content += `### 🧠 Comment ${i + 1} (file: ${c.path}, line: ${c.original_line || '-'})\n`;
-                content += `> ${c.body}\n\n`;
-                content += `🔗 [View in GitHub](${c.html_url})\n\n`;
+                newContent += `### 💬 Comment ${i + 1}\n\n`;
+                newContent += `${c.body}\n\n`;
+                newContent += `🔗 [View in GitHub](${c.html_url})\n\n`;
+                newContent += `---\n\n`;
               });
             }
 
-            fs.writeFileSync('qodo-review.md', content);
+            const filePath = path.join(process.cwd(), 'docs', 'review_notes.md');
+            let existingContent = '';
+            if (fs.existsSync(filePath)) {
+              existingContent = fs.readFileSync(filePath, 'utf8');
+            } else {
+              if (!fs.existsSync('./docs')) fs.mkdirSync('./docs', { recursive: true });
+            }
 
-      - name: Commit and push Qodo comments to branch
+            const finalContent = existingContent + newContent;
+            fs.writeFileSync(filePath, finalContent);
+
+      - name: Commit and push review notes to branch
         run: |
           git config user.name "qodo-bot"
           git config user.email "qodo@users.noreply.github.com"
-          git add qodo-review.md
-          git commit -m "📝 Add Qodo review comments"
+          git add docs/review_notes.md
+          git commit -m "📝 Update Qodo review notes"
           git push origin HEAD:${{ github.head_ref }}
