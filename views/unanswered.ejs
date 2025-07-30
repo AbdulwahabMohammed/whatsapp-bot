@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Unanswered Questions</title>
+</head>
+<body>
+<h1>Unanswered Questions</h1>
+<a href="/">Back</a>
+<ul>
+  <% alerts.forEach(function(a){ %>
+    <li>
+      <%= a.created_at.toISOString().slice(0,16).replace('T',' ') %> |
+      <%= a.phone %> : <%= a.message %>
+    </li>
+  <% }); %>
+</ul>
+</body>
+</html>
