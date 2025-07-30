@@ -1479,3 +1479,40 @@ Why: The suggestion correctly identifies a logical flaw in the API key validatio
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #103)
+**Title**: Clarify need for real OpenAI key
+
+**Branch**: `codex/update-documentation-for-openai-api-key` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 1 🔵⚪⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>No major issues detected</strong></td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/103#issuecomment-3135266254)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+No code suggestions found for the PR.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/103#issuecomment-3135266340)
+
+---
+
