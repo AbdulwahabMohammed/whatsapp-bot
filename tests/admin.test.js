@@ -264,6 +264,7 @@ describe('admin routes', () => {
       throw new Error('exit');
     });
     delete process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = ''; // Prevent dotenv from restoring the value
     logger.error.mockClear();
     expect(() => require('../src/openai')).toThrow('exit');
     expect(exitSpy).toHaveBeenCalledWith(1);
