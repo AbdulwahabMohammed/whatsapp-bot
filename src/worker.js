@@ -269,7 +269,18 @@ const worker = new Worker(
       }
       await sock.sendMessage(sender, content);
     } catch (err) {
-      logger.error('Failed to process job:', err);
+      if (err && (err.status === 429 || err.code === 'insufficient_quota')) {
+        logger.warn('OpenAI quota exceeded or rate limited:', err);
+        try {
+          await sock.sendMessage(sender, {
+            text: 'Service temporarily unavailable. Please try again later.'
+          });
+        } catch (notifyErr) {
+          logger.error('Failed to notify user about service outage:', notifyErr);
+        }
+      } else {
+        logger.error('Failed to process job:', err);
+      }
     }
   },
   { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
