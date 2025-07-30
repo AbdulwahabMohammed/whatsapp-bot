@@ -109,6 +109,7 @@ jobs:
           fi
 
       - name: Commit Codex updates
+        if: steps.gather.outputs.result != ''
         run: |
           git config user.name "qodo-bot"
           git config user.email "qodo@users.noreply.github.com"
