@@ -72,6 +72,14 @@ describe('admin routes', () => {
     qrcode.toDataURL.mockReset();
   });
 
+  it('redirects profile routes when not logged in', async () => {
+    const agent = request.agent(app);
+    await agent.get('/profile').expect(302);
+    await agent.get('/profile/setup-2fa').expect(302);
+    await agent.post('/profile/enable-2fa').expect(302);
+    await agent.post('/profile/disable-2fa').expect(302);
+  });
+
   it('logs in without 2FA when totp_secret is null', async () => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
@@ -96,6 +104,9 @@ describe('admin routes', () => {
       if (text.startsWith('SELECT role, totp_secret')) {
         return { rows: [{ role: 'admin', totp_secret: secret }] };
       }
+      if (text.startsWith('SELECT totp_secret FROM users')) {
+        return { rows: [{ totp_secret: secret }] };
+      }
       if (text.startsWith('UPDATE users SET totp_secret=$1')) {
         secret = params[0];
         return { rows: [] };
@@ -111,6 +122,9 @@ describe('admin routes', () => {
     await agent.post('/login').send('username=admin&password=secret');
     await agent.get('/profile/setup-2fa').expect(200);
     await agent.post('/profile/enable-2fa').send('token=123456').expect(302);
+    expect(secret).toBe('AAAA');
+    await agent.get('/profile/setup-2fa').expect(302);
+    await agent.post('/profile/enable-2fa').send('token=111111').expect(302);
     expect(secret).toBe('AAAA');
 
     const agent2 = request.agent(app);

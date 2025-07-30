@@ -46,6 +46,11 @@ function requireEditor(req, res, next) {
   res.status(403).send('Forbidden');
 }
 
+function requireLogin(req, res, next) {
+  if (req.session.user) return next();
+  res.redirect('/login');
+}
+
 // count all incoming requests
 app.use((req, res, next) => {
   res.on('finish', () => {
@@ -138,7 +143,7 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.get('/profile', async (req, res) => {
+app.get('/profile', requireLogin, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT role, totp_secret FROM users WHERE username=$1',
     [req.session.user]
@@ -151,14 +156,19 @@ app.get('/profile', async (req, res) => {
   });
 });
 
-app.get('/profile/setup-2fa', async (req, res) => {
+app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT totp_secret FROM users WHERE username=$1',
+    [req.session.user]
+  );
+  if (rows[0]?.totp_secret) return res.redirect('/profile');
   const secret = speakeasy.generateSecret({ name: `whatsapp-bot:${req.session.user}` });
   req.session.temp_secret = secret.base32;
   const qr = await qrcode.toDataURL(secret.otpauth_url);
   res.render('enable2fa', { qr, secret: secret.base32 });
 });
 
-app.post('/profile/enable-2fa', async (req, res) => {
+app.post('/profile/enable-2fa', requireLogin, async (req, res) => {
   const { token } = req.body;
   const secret = req.session.temp_secret;
   if (!secret) return res.redirect('/profile');
@@ -169,7 +179,7 @@ app.post('/profile/enable-2fa', async (req, res) => {
   res.redirect('/profile');
 });
 
-app.post('/profile/disable-2fa', async (req, res) => {
+app.post('/profile/disable-2fa', requireLogin, async (req, res) => {
   await pool.query('UPDATE users SET totp_secret=NULL WHERE username=$1', [req.session.user]);
   res.redirect('/profile');
 });
@@ -183,10 +193,7 @@ app.get('/dashboard', (req, res) => {
 });
 
 // auth middleware
-app.use((req, res, next) => {
-  if (req.session.user) return next();
-  res.redirect('/login');
-});
+app.use(requireLogin);
 
 app.get('/', async (req, res) => {
   const orgs = await listOrganizations();
