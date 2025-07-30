@@ -1312,3 +1312,54 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #101)
+**Title**: Update docs for queue and metrics
+
+**Branch**: `codex/review-and-update-documentation` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/101/files#diff-06572a96a58dc510037d5efa622f9bec8519bc1beab13c9f251e97e657a9d4edR29-R29'><strong>Date Inconsistency</strong></a>
+
+The changelog entry uses date 2025-08-03 which is in the future compared to today's date (2025-07-30). This should be corrected to reflect the actual date of the changes.
+</summary>
+
+```markdown
+## 2025-08-03
+- توثيق وحدات `logger.js` و`metrics.js` و`queue.js` و`scheduler.js` في README والوثائق.
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/101#issuecomment-3135200126)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+No code suggestions found for the PR.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/101#issuecomment-3135200933)
+
+---
+
