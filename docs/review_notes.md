@@ -325,3 +325,182 @@ No code suggestions found for the PR.
 
 ---
 
+
+
+---
+
+## 🧠 PR Comments (PR #19)
+**Title**: Implement polling for Qodo comments
+
+**Branch**: `codex/replace-sleep-with-polling-loop-in-workflow` &nbsp;&nbsp; 📅 **Date**: 2025-07-30
+
+### 💬 Comment 1 by `qodo-merge-pro[bot]`
+
+## PR Reviewer Guide 🔍
+
+Here are some key observations to aid the review process:
+
+<table>
+<tr><td>⏱️&nbsp;<strong>Estimated effort to review</strong>: 2 🔵🔵⚪⚪⚪</td></tr>
+<tr><td>🧪&nbsp;<strong>No relevant tests</strong></td></tr>
+<tr><td>🔒&nbsp;<strong>No security concerns identified</strong></td></tr>
+<tr><td>⚡&nbsp;<strong>Recommended focus areas for review</strong><br><br>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R27-R31'><strong>Logic Error</strong></a>
+
+The variable `prNumber` is used before being declared. Line 28 checks `if (!prNumber && context.payload.pull_request_review_comment)` but `prNumber` is only declared on line 27 within a different scope, making it undefined at the point of the first check.
+</summary>
+
+```yaml
+let prNumber = context.payload.pull_request?.number
+if (!prNumber && context.payload.pull_request_review_comment) {
+  const url = context.payload.pull_request_review_comment.pull_request_url
+  prNumber = url ? url.split('/').pop() : null
+}
+```
+
+</details>
+
+<details><summary><a href='https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R47-R50'><strong>Performance Issue</strong></a>
+
+The polling loop makes API calls every 5 seconds for up to 60 seconds, potentially making 12 API requests. This could hit GitHub API rate limits and is inefficient. Consider using exponential backoff or fewer polling attempts.
+</summary>
+
+```yaml
+while (!hasFeedback && Date.now() - start < timeoutMs) {
+  await new Promise(r => setTimeout(r, intervalMs))
+  hasFeedback = await check()
+}
+```
+
+</details>
+
+</td></tr>
+</table>
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19#issuecomment-3137601961)
+
+---
+
+### 💬 Comment 2 by `qodo-merge-pro[bot]`
+
+## PR Code Suggestions ✨
+
+<!-- 733249b -->
+
+Explore these optional code suggestions:
+
+<table><thead><tr><td><strong>Category</strong></td><td align=left><strong>Suggestion&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; </strong></td><td align=center><strong>Impact</strong></td></tr><tbody><tr><td rowspan=2>General</td>
+<td>
+
+
+
+<details><summary>Add error handling for API calls</summary>
+
+___
+
+**Add error handling around the API calls within the polling loop to prevent <br>workflow failure from transient network issues. Consider wrapping the <code>check()</code> <br>function call in a try-catch block to handle potential GitHub API errors <br>gracefully.**
+
+[.github/workflows/qodo-codex-auto.yml [47-50]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R47-R50)
+
+```diff
+ const timeoutMs = 60000
+ const intervalMs = 5000
+ ...
+ while (!hasFeedback && Date.now() - start < timeoutMs) {
+   await new Promise(r => setTimeout(r, intervalMs))
+-  hasFeedback = await check()
++  try {
++    hasFeedback = await check()
++  } catch (error) {
++    console.log(`API call failed: ${error.message}, retrying...`)
++  }
+ }
+```
+
+
+
+`[To ensure code accuracy, apply this suggestion manually]`
+
+
+<details><summary>Suggestion importance[1-10]: 7</summary>
+
+__
+
+Why: This is a good suggestion that improves the robustness of the polling loop by handling potential transient API errors, preventing the entire workflow from failing unnecessarily.
+
+
+</details></details></td><td align=center>Medium
+
+</td></tr><tr><td>
+
+
+
+<details><summary>Handle pagination for review comments</summary>
+
+___
+
+**The hardcoded <code>per_page: 100</code> limit may miss comments if there are more than 100 <br>review comments on the PR. Consider implementing pagination or increasing the <br>limit to handle PRs with many comments.**
+
+[.github/workflows/qodo-codex-auto.yml [36-44]](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19/files#diff-19b0d2b23f7fff3ca5ea2c5fcee0846d43aceedab313fe649980250934b1a525R36-R44)
+
+```diff
+ const check = async () => {
+   const { data: comments } = await github.rest.pulls.listReviewComments({
+     owner: context.repo.owner,
+     repo: context.repo.repo,
+     pull_number: prNumber,
+     per_page: 100
+   })
+-  return comments.some(c => c.user && c.user.login === 'qodo-merge-pro[bot]')
++  // Handle pagination if needed
++  let allComments = comments
++  if (comments.length === 100) {
++    const { data: moreComments } = await github.rest.pulls.listReviewComments({
++      owner: context.repo.owner,
++      repo: context.repo.repo,
++      pull_number: prNumber,
++      per_page: 100,
++      page: 2
++    })
++    allComments = [...comments, ...moreComments]
++  }
++  return allComments.some(c => c.user && c.user.login === 'qodo-merge-pro[bot]')
+ }
+```
+
+
+- [ ] **Apply / Chat** <!-- /improve --apply_suggestion=1 -->
+
+
+<details><summary>Suggestion importance[1-10]: 6</summary>
+
+__
+
+Why: The suggestion correctly identifies a potential bug where comments from the bot might be missed if a PR has over 100 comments, and handling pagination would make the check more reliable.
+
+
+</details></details></td><td align=center>Low
+
+</td></tr>
+<tr><td align="center" colspan="2">
+
+- [ ] More <!-- /improve --more_suggestions=true -->
+
+</td><td></td></tr></tbody></table>
+
+
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19#issuecomment-3137603318)
+
+---
+
+### 💬 Comment 3 by `github-actions[bot]`
+
+✅ تم تطبيق اقتراحات Qodo Merge Pro تلقائيًا.
+
+🔗 [View in GitHub](https://github.com/AbdulwahabMohammed/whatsapp-bot/pull/19#issuecomment-3137603871)
+
+---
+
