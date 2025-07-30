@@ -8,6 +8,20 @@
   <button class="btn btn-primary" type="submit">Upload</button>
 </form>
 <script>
+function createAlert(message, type = 'success') {
+  const div = document.createElement('div');
+  div.className = `alert alert-${type} alert-dismissible fade show`;
+  div.setAttribute('role', 'alert');
+  div.textContent = message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-close';
+  btn.setAttribute('data-bs-dismiss', 'alert');
+  btn.setAttribute('aria-label', 'Close');
+  div.appendChild(btn);
+  return div;
+}
+
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -36,29 +50,9 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     } else {
       result = { message: await res.text() };
     }
-    const div = document.createElement('div');
-    div.className = 'alert alert-success alert-dismissible fade show';
-    div.setAttribute('role', 'alert');
-    div.textContent = result.message;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn-close';
-    btn.setAttribute('data-bs-dismiss', 'alert');
-    btn.setAttribute('aria-label', 'Close');
-    div.appendChild(btn);
-    container.appendChild(div);
+    container.appendChild(createAlert(result.message));
   } catch (err) {
-    const div = document.createElement('div');
-    div.className = 'alert alert-danger alert-dismissible fade show';
-    div.setAttribute('role', 'alert');
-    div.textContent = err.message || 'Request failed';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn-close';
-    btn.setAttribute('data-bs-dismiss', 'alert');
-    btn.setAttribute('aria-label', 'Close');
-    div.appendChild(btn);
-    container.appendChild(div);
+    container.appendChild(createAlert(err.message || 'Request failed', 'danger'));
   }
 });
 </script>
