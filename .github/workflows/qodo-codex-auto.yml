@@ -9,6 +9,9 @@ on:
 jobs:
   apply-feedback:
     runs-on: ubuntu-latest
+    concurrency:
+      group: codex-auto-${{ github.head_ref }}
+      cancel-in-progress: true
     permissions:
       contents: write
       pull-requests: write
@@ -25,8 +28,15 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const fs = require('fs');
-            const pr = context.payload.pull_request || context.payload.pull_request_review_comment.pull_request_url.split('/').pop();
-            const prNumber = typeof pr === 'object' ? pr.number : pr;
+            let prNumber = context.payload.pull_request?.number;
+            if (!prNumber && context.payload.pull_request_review_comment) {
+              const url = context.payload.pull_request_review_comment.pull_request_url;
+              prNumber = url ? url.split('/').pop() : null;
+            }
+            if (!prNumber) {
+              core.setFailed('Unable to determine PR number');
+              return '';
+            }
             const { data: comments } = await github.rest.pulls.listReviewComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -37,10 +47,15 @@ jobs:
               .filter(c => c.user && c.user.login === 'qodo-merge-pro[bot]')
               .map(c => `🔹 file: ${c.path}\n🧩 line: ${c.original_line}\n💬 comment: ${c.body}\n`)
               .join('\n');
-            fs.writeFileSync('README_QODO_FEEDBACK.md', feedback);
+            if (feedback) {
+              fs.writeFileSync('README_QODO_FEEDBACK.md', feedback);
+            } else {
+              console.log('No feedback found');
+            }
             return feedback;
 
       - name: Commit feedback file
+        if: steps.gather.outputs.result != ''
         run: |
           git config user.name "qodo-bot"
           git config user.email "qodo@users.noreply.github.com"
@@ -49,8 +64,13 @@ jobs:
           git push origin HEAD:${{ github.head_ref }}
 
       - name: Apply Codex suggestions
+        if: steps.gather.outputs.result != ''
         run: |
-          codex apply README_QODO_FEEDBACK.md || echo "Codex failed or not installed"
+          if command -v codex >/dev/null 2>&1; then
+            codex apply README_QODO_FEEDBACK.md
+          else
+            echo "Codex command not found"
+          fi
 
       - name: Commit Codex updates
         run: |
@@ -65,8 +85,15 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const pr = context.payload.pull_request || context.payload.pull_request_review_comment.pull_request_url.split('/').pop();
-            const prNumber = typeof pr === 'object' ? pr.number : pr;
+            let prNumber = context.payload.pull_request?.number;
+            if (!prNumber && context.payload.pull_request_review_comment) {
+              const url = context.payload.pull_request_review_comment.pull_request_url;
+              prNumber = url ? url.split('/').pop() : null;
+            }
+            if (!prNumber) {
+              core.setFailed('Unable to determine PR number');
+              return;
+            }
             github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
