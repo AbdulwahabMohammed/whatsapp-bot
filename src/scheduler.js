@@ -23,12 +23,22 @@ async function dispatchScheduled() {
   }
 }
 
+let task;
+
 function startScheduler() {
-  return cron.schedule('* * * * *', dispatchScheduled);
+  task = cron.schedule('* * * * *', dispatchScheduled);
+  return task;
+}
+
+function stopScheduler() {
+  if (task) {
+    task.stop();
+    task = null;
+  }
 }
 
 if (require.main === module) {
   startScheduler();
 }
 
-module.exports = { startScheduler, dispatchScheduled };
+module.exports = { startScheduler, stopScheduler, dispatchScheduled };

@@ -50,6 +50,7 @@ describe('worker message flow', () => {
 
   afterEach(() => {
     delete global.fetch;
+    require('../src/scheduler').stopScheduler();
   });
 
   test('sends reply via WhatsApp', async () => {
