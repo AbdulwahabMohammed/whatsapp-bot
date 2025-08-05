@@ -60,6 +60,16 @@ function requireEditor (req, res, next) {
   res.status(403).send('Forbidden');
 }
 
+function requireOrgAccess (req, res, next) {
+  if (req.session.role === 'admin') return next();
+  const orgId = req.session.organization_id;
+  const target = req.params.id || req.body.organization_id || req.query.organization_id;
+  if (target && Number(target) !== Number(orgId)) {
+    return res.status(403).send('Forbidden');
+  }
+  next();
+}
+
 function requireLogin (req, res, next) {
   if (req.session.user) return next();
   res.redirect('/login');
@@ -108,7 +118,7 @@ app.get('/login', (req, res) => {
 app.post('/login', async (req, res) => {
   const { username, password, token } = req.body;
   const { rows } = await pool.query(
-    'SELECT password_hash, role, totp_secret FROM users WHERE username=$1',
+    'SELECT password_hash, role, totp_secret, organization_id FROM users WHERE username=$1',
     [username]
   );
   const user = rows[0];
@@ -126,11 +136,13 @@ app.post('/login', async (req, res) => {
     if (!verified) return res.status(401).send('Invalid token');
     req.session.user = username;
     req.session.role = user.role;
+    req.session.organization_id = user.organization_id;
     return res.redirect('/');
   }
 
   req.session.user = username;
   req.session.role = user.role;
+  req.session.organization_id = user.organization_id;
   return res.redirect('/');
 });
 
@@ -230,7 +242,10 @@ app.get('/dashboard', (req, res) => {
 app.use(requireLogin);
 
 app.get('/', async (req, res) => {
-  const orgs = await listOrganizations();
+  let orgs = await listOrganizations();
+  if (req.session.role !== 'admin') {
+    orgs = orgs.filter(o => o.id === req.session.organization_id);
+  }
   res.render('list', { orgs });
 });
 
@@ -251,7 +266,7 @@ app.post('/org/new', requireEditor, async (req, res) => {
   res.redirect('/');
 });
 
-app.post('/org/:id/assistant', requireEditor, async (req, res) => {
+app.post('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
   const { instructions } = req.body;
   if (instructions !== undefined) {
     await pool.query('UPDATE organizations SET instructions=$1 WHERE id=$2', [instructions, req.params.id]);
@@ -260,17 +275,17 @@ app.post('/org/:id/assistant', requireEditor, async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/org/:id/assistant', requireEditor, async (req, res) => {
+app.get('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [req.params.id]);
   const instructions = rows[0]?.instructions || '';
   res.render('createAssistant', { orgId: req.params.id, instructions });
 });
 
-app.get('/org/:id/upload', requireEditor, (req, res) => {
+app.get('/org/:id/upload', requireEditor, requireOrgAccess, (req, res) => {
   res.render('upload', { orgId: req.params.id });
 });
 
-app.post('/org/:id/upload', requireEditor, async (req, res) => {
+app.post('/org/:id/upload', requireEditor, requireOrgAccess, async (req, res) => {
   const { filePath } = req.body;
   await upload(req.params.id, filePath);
   if (req.headers.accept === 'application/json') {
@@ -280,7 +295,7 @@ app.post('/org/:id/upload', requireEditor, async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/org/:id/hours', requireEditor, async (req, res) => {
+app.get('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT name, working_hours_start, working_hours_end FROM organizations WHERE id=$1',
     [req.params.id]
@@ -294,7 +309,7 @@ app.get('/org/:id/hours', requireEditor, async (req, res) => {
   });
 });
 
-app.post('/org/:id/hours', requireEditor, async (req, res) => {
+app.post('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
   const { working_hours_start, working_hours_end } = req.body;
   await pool.query(
     'UPDATE organizations SET working_hours_start=$1, working_hours_end=$2 WHERE id=$3',
@@ -304,27 +319,29 @@ app.post('/org/:id/hours', requireEditor, async (req, res) => {
 });
 
 app.get('/users', requireAdmin, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, role FROM users ORDER BY id');
-  res.render('users', { users: rows });
+  const { rows } = await pool.query('SELECT id, username, role, organization_id FROM users ORDER BY id');
+  const orgs = await listOrganizations();
+  res.render('users', { users: rows, orgs });
 });
 
-app.get('/users/new', requireAdmin, (req, res) => {
-  res.render('newUser');
+app.get('/users/new', requireAdmin, async (req, res) => {
+  const orgs = await listOrganizations();
+  res.render('newUser', { orgs });
 });
 
 app.post('/users/new', requireAdmin, async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password, role, organization_id } = req.body;
   const hash = await bcrypt.hash(password, 10);
   await pool.query(
-    'INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3) ON CONFLICT (username) DO UPDATE SET password_hash=EXCLUDED.password_hash, role=EXCLUDED.role',
-    [username, hash, role]
+    'INSERT INTO users (username, password_hash, role, organization_id) VALUES ($1,$2,$3,$4) ON CONFLICT (username) DO UPDATE SET password_hash=EXCLUDED.password_hash, role=EXCLUDED.role, organization_id=EXCLUDED.organization_id',
+    [username, hash, role, organization_id || null]
   );
   res.redirect('/users');
 });
 
 app.post('/users/:id/role', requireAdmin, async (req, res) => {
-  const { role } = req.body;
-  await pool.query('UPDATE users SET role=$1 WHERE id=$2', [role, req.params.id]);
+  const { role, organization_id } = req.body;
+  await pool.query('UPDATE users SET role=$1, organization_id=$2 WHERE id=$3', [role, organization_id || null, req.params.id]);
   res.redirect('/users');
 });
 
@@ -335,11 +352,14 @@ app.post('/users/:id/disable-2fa', requireAdmin, async (req, res) => {
 });
 
 app.get('/schedule/new', requireEditor, async (req, res) => {
-  const orgs = await listOrganizations();
+  let orgs = await listOrganizations();
+  if (req.session.role !== 'admin') {
+    orgs = orgs.filter(o => o.id === req.session.organization_id);
+  }
   res.render('newSchedule', { orgs });
 });
 
-app.post('/schedule/new', requireEditor, async (req, res) => {
+app.post('/schedule/new', requireEditor, requireOrgAccess, async (req, res) => {
   const { organization_id, phone, text, send_at } = req.body;
   await pool.query(
     'INSERT INTO scheduled_messages (organization_id, phone, text, send_at) VALUES ($1,$2,$3,$4)',
@@ -349,11 +369,14 @@ app.post('/schedule/new', requireEditor, async (req, res) => {
 });
 
 app.get('/broadcast', requireEditor, async (req, res) => {
-  const orgs = await listOrganizations();
+  let orgs = await listOrganizations();
+  if (req.session.role !== 'admin') {
+    orgs = orgs.filter(o => o.id === req.session.organization_id);
+  }
   res.render('broadcast', { orgs });
 });
 
-app.post('/broadcast', requireEditor, async (req, res) => {
+app.post('/broadcast', requireEditor, requireOrgAccess, async (req, res) => {
   const { organization_id, phones, text } = req.body;
   let list = [];
   if (phones) {
@@ -376,11 +399,11 @@ app.post('/broadcast', requireEditor, async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/messages', requireAdmin, (req, res) => {
+app.get('/messages', requireEditor, (req, res) => {
   res.render('messages');
 });
 
-app.post('/messages', requireAdmin, async (req, res) => {
+app.post('/messages', requireEditor, async (req, res) => {
   const { phone, from, to, export: exportType } = req.body;
   const conditions = [];
   const params = [];
@@ -397,6 +420,10 @@ app.post('/messages', requireAdmin, async (req, res) => {
     conditions.push(`m.created_at <= $${idx++}`);
     params.push(to);
   }
+  if (req.session.role !== 'admin') {
+    conditions.push(`c.organization_id=$${idx++}`);
+    params.push(req.session.organization_id);
+  }
   let query =
     'SELECT m.sender, m.text, m.attachment_type, m.attachment_path, m.created_at, c.customer_phone, o.name AS organization ' +
     'FROM messages m JOIN conversations c ON m.conversation_id=c.id ' +
@@ -408,8 +435,12 @@ app.post('/messages', requireAdmin, async (req, res) => {
   let sumQuery = 'SELECT id, customer_phone, summary, escalated FROM conversations WHERE summary IS NOT NULL';
   const sumParams = [];
   if (phone) {
-    sumQuery += ' AND customer_phone=$1';
+    sumQuery += ` AND customer_phone=$${sumParams.length + 1}`;
     sumParams.push(phone);
+  }
+  if (req.session.role !== 'admin') {
+    sumQuery += ` AND organization_id=$${sumParams.length + 1}`;
+    sumParams.push(req.session.organization_id);
   }
   sumQuery += ' ORDER BY id DESC LIMIT 50';
   const { rows: summaries } = await pool.query(sumQuery, sumParams);
