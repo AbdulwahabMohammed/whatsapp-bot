@@ -1,0 +1,31 @@
+<h1 class="mb-3">Bots</h1>
+<% if (role === 'admin' || role === 'editor') { %>
+  <a class="btn btn-primary mb-3" href="/org/<%= orgId %>/bots/new">New Bot</a>
+<% } %>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Assistant ID</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  <% bots.forEach(function(b){ %>
+    <tr data-bot-id="<%= b.id %>">
+      <td><%= b.name || '' %></td>
+      <td><%= b.assistant_id || '' %></td>
+      <td class="status"><%= b.status %></td>
+      <td>
+        <% if (role === 'admin' || role === 'editor') { %>
+          <button class="btn btn-sm btn-secondary start-stop"><%= b.status === 'connected' ? 'Stop' : 'Start' %></button>
+        <% } %>
+      </td>
+    </tr>
+  <% }); %>
+  </tbody>
+</table>
+<%- include('partials/botQr') %>
+<script src="/static/bots.js"></script>
+<script>initBotsPage();</script>

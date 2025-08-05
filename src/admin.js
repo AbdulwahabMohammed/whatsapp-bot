@@ -285,7 +285,7 @@ app.get('/', async (req, res) => {
   if (req.session.role !== 'admin') {
     orgs = orgs.filter(o => o.id === req.session.organization_id);
   }
-  res.render('list', { orgs });
+  res.render('list', { orgs, role: req.session.role });
 });
 
 app.get('/org/new', requireEditor, (req, res) => {
@@ -365,13 +365,28 @@ app.get('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) =>
   res.json(rows);
 });
 
+app.get('/org/:orgId/bots/manage', requireEditor, requireOrgAccess, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT id, name, assistant_id, status FROM bots WHERE organization_id=$1',
+    [req.params.orgId]
+  );
+  res.render('bots', { orgId: req.params.orgId, bots: rows, role: req.session.role });
+});
+
+app.get('/org/:orgId/bots/new', requireEditor, requireOrgAccess, (req, res) => {
+  res.render('newBot', { orgId: req.params.orgId });
+});
+
 app.post('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
   const { assistant_id, name, phone } = req.body;
   const { rows } = await pool.query(
     'INSERT INTO bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
     [req.params.orgId, assistant_id, name || null, phone || null, 'stopped']
   );
-  res.json(rows[0]);
+  if (req.headers.accept === 'application/json') {
+    return res.json(rows[0]);
+  }
+  res.redirect(`/org/${req.params.orgId}/bots/manage`);
 });
 
 app.post('/bot/:botId/start', requireEditor, requireBotAccess, async (req, res) => {
