@@ -20,6 +20,7 @@ const PDFDocument = require('pdfkit');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const expressLayouts = require('express-ejs-layouts');
+const { events: botEvents } = require('./botManager');
 
 const app = express();
 expressWs(app);
@@ -95,13 +96,21 @@ app.ws('/ws', (ws, _req) => {
   ws.on('close', () => wsClients.delete(ws));
 });
 
+// forward bot status events to websocket clients
+botEvents.on('update', data => {
+  const payload = JSON.stringify(data);
+  wsClients.forEach(client => {
+    try { client.send(payload); } catch (e) {}
+  });
+});
+
 async function broadcastStatus () {
   const queue = await getQueueLength();
   queueLengthGauge.set(queue);
   const conn = {};
   const values = connectionGauge.get().values || [];
   values.forEach(v => {
-    conn[v.labels.org_id] = v.value;
+    conn[v.labels.bot_id] = v.value;
   });
   const data = JSON.stringify({ queue, connections: conn });
   wsClients.forEach(client => {

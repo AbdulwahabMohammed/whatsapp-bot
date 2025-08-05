@@ -1,19 +1,12 @@
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason
-} = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const qrcode = require('qrcode-terminal');
 const { Worker } = require('bullmq');
+const path = require('path');
 const { sendMessage } = require('./chat');
 const pool = require('./db');
 const logger = require('./logger');
 const openai = require('./openai');
-const path = require('path');
-const { connectionGauge, messageCounter } = require('./metrics');
+const { messageCounter } = require('./metrics');
 const { startScheduler } = require('./scheduler');
-require('dotenv').config();
+const { getSocket, startBot } = require('./botManager');
 
 function withinWorkingHours (start, end) {
   if (!start || !end) return true;
@@ -62,62 +55,13 @@ const BULK_MESSAGE_DELAY = Math.max(
   Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10) || 500, 60000)
 );
 
-const sockets = {};
-
-async function startForOrg (org, attempt = 0) {
-  if (!org.assistant_id) {
-    throw new Error(`Organization ${org.id} does not have an assistant`);
-  }
-
-  connectionGauge.labels(String(org.id)).set(0);
-  const MAX_RECONNECTS = parseInt(process.env.MAX_RECONNECTS || '5', 10);
-
-  const { state, saveCreds } = await useMultiFileAuthState(`auth-${org.id}`);
-  const sock = makeWASocket({ auth: state });
-  sockets[org.id] = sock;
-
-  sock.ev.on('connection.update', update => {
-    const { connection, lastDisconnect, qr } = update;
-    if (qr) {
-      logger.info('Scan this QR code with WhatsApp:');
-      qrcode.generate(qr, { small: true });
-    }
-
-    if (connection === 'close') {
-      connectionGauge.labels(String(org.id)).set(0);
-      const shouldReconnect =
-        (lastDisconnect?.error instanceof Boom ? lastDisconnect.error.output.statusCode : 0) !==
-        DisconnectReason.loggedOut;
-      if (shouldReconnect) {
-        if (attempt < MAX_RECONNECTS) {
-          const delay = Math.min(30000, 2 ** attempt * 1000);
-          const nextAttempt = attempt + 1;
-          logger.warn(
-            `WhatsApp disconnected for org ${org.id}, retrying in ${delay}ms (attempt ${nextAttempt}/${MAX_RECONNECTS})`
-          );
-          setTimeout(() => {
-            startForOrg(org, nextAttempt).catch(err => {
-              logger.error(`WhatsApp worker error for org ${org.id}:`, err);
-            });
-          }, delay);
-        } else {
-          logger.error(`Max reconnect attempts reached for org ${org.id}`);
-        }
-      }
-    } else if (connection === 'open') {
-      logger.info('WhatsApp connection established');
-      connectionGauge.labels(String(org.id)).set(1);
-    }
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-}
-
+// message worker
 // eslint-disable-next-line no-unused-vars
 const worker = new Worker(
   'messages',
   async job => {
     const {
+      botId,
       orgId,
       assistantId,
       sender,
@@ -127,11 +71,21 @@ const worker = new Worker(
       replyAttachmentType,
       replyAttachmentPath
     } = job.data;
-    const sock = sockets[orgId];
+
+    let sock = getSocket(botId);
     if (!sock) {
-      logger.error(`No WhatsApp connection for org ${orgId}`);
+      // try to start the bot if not running
+      const { rows } = await pool.query('SELECT * FROM bots WHERE id=$1', [botId]);
+      if (rows[0]) {
+        await startBot(rows[0]);
+        sock = getSocket(botId);
+      }
+    }
+    if (!sock) {
+      logger.error(`No WhatsApp connection for bot ${botId}`);
       return;
     }
+
     try {
       const { rows: orgRows } = await pool.query(
         'SELECT working_hours_start, working_hours_end, instructions FROM organizations WHERE id=$1',
@@ -173,7 +127,7 @@ const worker = new Worker(
           'INSERT INTO conversation_stats (conversation_id, response_time_ms) VALUES ($1,$2)',
           [conv.id, latency]
         );
-        messageCounter.labels(String(orgId), 'sent').inc();
+        messageCounter.labels(String(botId), 'sent').inc();
         await sock.sendMessage(sender, { text: reply });
         return;
       }
@@ -252,7 +206,7 @@ const worker = new Worker(
           }
         }
       }
-      messageCounter.labels(String(orgId), 'sent').inc();
+      messageCounter.labels(String(botId), 'sent').inc();
       let content = { text: reply };
       if (replyAttachmentPath) {
         if (replyAttachmentType === 'image') {
@@ -286,14 +240,15 @@ const worker = new Worker(
   { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
 );
 
+// bulk message worker
 // eslint-disable-next-line no-unused-vars
 const bulkWorker = new Worker(
   'bulkMessages',
   async job => {
-    const { orgId, phones, text } = job.data;
-    const sock = sockets[orgId];
+    const { botId, orgId, phones, text } = job.data;
+    const sock = getSocket(botId);
     if (!sock) {
-      logger.error(`No WhatsApp connection for org ${orgId}`);
+      logger.error(`No WhatsApp connection for bot ${botId}`);
       return;
     }
     for (const phone of phones) {
@@ -330,25 +285,5 @@ const bulkWorker = new Worker(
   { connection: { url: process.env.REDIS_URL || 'redis://localhost:6379' } }
 );
 
-async function start () {
-  const { rows } = await pool.query(
-    `SELECT o.id, b.assistant_id
-     FROM organizations o
-     JOIN bots b ON b.organization_id = o.id
-     WHERE b.assistant_id IS NOT NULL AND (b.status IS NULL OR b.status = 'active')`
-  );
-  if (rows.length === 0) {
-    throw new Error('No organizations with assistants found');
-  }
-  for (const org of rows) {
-    startForOrg(org).catch(err => {
-      logger.error(`WhatsApp worker error for org ${org.id}:`, err);
-    });
-  }
-}
-
-start().catch(err => {
-  logger.error('Failed to start worker:', err);
-});
-
 startScheduler();
+
