@@ -20,7 +20,12 @@ const PDFDocument = require('pdfkit');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const expressLayouts = require('express-ejs-layouts');
-const { events: botEvents } = require('./botManager');
+const {
+  startBot,
+  stopBot,
+  getBotStatus,
+  events: botEvents
+} = require('./botManager');
 
 const app = express();
 expressWs(app);
@@ -64,11 +69,31 @@ function requireEditor (req, res, next) {
 function requireOrgAccess (req, res, next) {
   if (req.session.role === 'admin') return next();
   const orgId = req.session.organization_id;
-  const target = req.params.id || req.body.organization_id || req.query.organization_id;
+  const target =
+    req.params.id ||
+    req.params.orgId ||
+    req.body.organization_id ||
+    req.query.organization_id;
   if (target && Number(target) !== Number(orgId)) {
     return res.status(403).send('Forbidden');
   }
   next();
+}
+
+async function requireBotAccess (req, res, next) {
+  if (req.session.role === 'admin') return next();
+  try {
+    const { rows } = await pool.query('SELECT organization_id FROM bots WHERE id=$1', [
+      req.params.botId
+    ]);
+    const orgId = rows[0]?.organization_id;
+    if (!orgId || Number(orgId) !== Number(req.session.organization_id)) {
+      return res.status(403).send('Forbidden');
+    }
+    next();
+  } catch (e) {
+    next(e);
+  }
 }
 
 function requireLogin (req, res, next) {
@@ -112,7 +137,12 @@ async function broadcastStatus () {
   values.forEach(v => {
     conn[v.labels.bot_id] = v.value;
   });
-  const data = JSON.stringify({ queue, connections: conn });
+  const { rows } = await pool.query('SELECT id FROM bots');
+  const statuses = {};
+  rows.forEach(r => {
+    statuses[r.id] = getBotStatus(r.id);
+  });
+  const data = JSON.stringify({ queue, connections: conn, statuses });
   wsClients.forEach(client => {
     try { client.send(data); } catch (e) {}
   });
@@ -325,6 +355,40 @@ app.post('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => 
     [working_hours_start || null, working_hours_end || null, req.params.id]
   );
   res.redirect('/');
+});
+
+app.get('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT id, name, assistant_id, status FROM bots WHERE organization_id=$1',
+    [req.params.orgId]
+  );
+  res.json(rows);
+});
+
+app.post('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
+  const { assistant_id, name, phone } = req.body;
+  const { rows } = await pool.query(
+    'INSERT INTO bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    [req.params.orgId, assistant_id, name || null, phone || null, 'stopped']
+  );
+  res.json(rows[0]);
+});
+
+app.post('/bot/:botId/start', requireEditor, requireBotAccess, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM bots WHERE id=$1', [req.params.botId]);
+  const bot = rows[0];
+  if (!bot) return res.status(404).send('Not found');
+  await startBot(bot);
+  res.json({ status: getBotStatus(bot.id) });
+});
+
+app.post('/bot/:botId/stop', requireEditor, requireBotAccess, async (req, res) => {
+  stopBot(req.params.botId);
+  res.json({ status: 'stopped' });
+});
+
+app.get('/bot/:botId/status', requireEditor, requireBotAccess, async (req, res) => {
+  res.json({ status: getBotStatus(req.params.botId) });
 });
 
 app.get('/users', requireAdmin, async (req, res) => {
