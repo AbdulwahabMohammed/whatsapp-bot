@@ -10,8 +10,8 @@ const requestCounter = new client.Counter({
 
 const connectionGauge = new client.Gauge({
   name: 'whatsapp_connection_status',
-  help: 'WhatsApp connection status for each organization',
-  labelNames: ['org_id']
+  help: 'WhatsApp connection status for each bot',
+  labelNames: ['bot_id']
 });
 
 const queueLengthGauge = new client.Gauge({
@@ -22,7 +22,7 @@ const queueLengthGauge = new client.Gauge({
 const messageCounter = new client.Counter({
   name: 'whatsapp_messages_total',
   help: 'Total number of WhatsApp messages processed',
-  labelNames: ['org_id', 'direction']
+  labelNames: ['bot_id', 'direction']
 });
 
 module.exports = {
