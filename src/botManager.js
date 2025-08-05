@@ -144,4 +144,3 @@ function stopBot (botId) {
 }
 
 module.exports = { startBot, stopBot, getBotStatus, getSocket, events };
-
