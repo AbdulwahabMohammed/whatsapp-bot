@@ -8,17 +8,16 @@ const logger = require('./logger');
  * Create an assistant for an organization.
  */
 async function createAssistant (organizationId) {
-  const orgRes = await pool.query(
-    'SELECT assistant_id, instructions FROM organizations WHERE id=$1',
-    [organizationId]
-  );
-  const org = orgRes.rows[0];
+  const orgRes = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [organizationId]);
+  const botRes = await pool.query('SELECT * FROM bots WHERE organization_id=$1', [organizationId]);
+  const org = orgRes.rows[0] || {};
+  const bot = botRes.rows[0];
   const instructions =
-    org?.instructions ||
+    org.instructions ||
     'رد فقط باستخدام البيانات المقدمة من الملفات المرجعية الخاصة بالمنشأة.';
 
-  if (org?.assistant_id) {
-    const assistant = await openai.beta.assistants.update(org.assistant_id, {
+  if (bot?.assistant_id) {
+    const assistant = await openai.beta.assistants.update(bot.assistant_id, {
       instructions
     });
     logger.info(`Assistant updated: ${assistant.id}`);
@@ -34,7 +33,17 @@ async function createAssistant (organizationId) {
     model: 'gpt-4o'
   });
 
-  await pool.query('UPDATE organizations SET assistant_id=$1 WHERE id=$2', [assistant.id, organizationId]);
+  if (bot) {
+    await pool.query(
+      'UPDATE bots SET assistant_id=$1, name=$2, status=$3 WHERE id=$4',
+      [assistant.id, `Org-${organizationId}-Bot`, 'active', bot.id]
+    );
+  } else {
+    await pool.query(
+      'INSERT INTO bots (organization_id, assistant_id, name, status) VALUES ($1,$2,$3,$4)',
+      [organizationId, assistant.id, `Org-${organizationId}-Bot`, 'active']
+    );
+  }
 
   logger.info(`Assistant created: ${assistant.id}`);
   return assistant;
@@ -44,7 +53,13 @@ async function createAssistant (organizationId) {
  * Upload a file and attach it to the organization assistant.
  */
 async function uploadFile (organizationId, filePath) {
-  const orgRes = await pool.query('SELECT assistant_id, vector_store_id FROM organizations WHERE id=$1', [organizationId]);
+  const orgRes = await pool.query(
+    `SELECT b.assistant_id, o.vector_store_id
+     FROM organizations o
+     JOIN bots b ON b.organization_id = o.id
+     WHERE o.id=$1`,
+    [organizationId]
+  );
   const org = orgRes.rows[0];
   if (!org) {
     throw new Error('Organization not found');

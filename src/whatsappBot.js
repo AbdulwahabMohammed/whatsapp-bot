@@ -122,7 +122,12 @@ async function startForOrg (org, attempt = 0) {
 }
 
 async function start () {
-  const { rows } = await pool.query('SELECT * FROM organizations WHERE assistant_id IS NOT NULL');
+  const { rows } = await pool.query(
+    `SELECT o.id, b.assistant_id
+     FROM organizations o
+     JOIN bots b ON b.organization_id = o.id
+     WHERE b.assistant_id IS NOT NULL AND (b.status IS NULL OR b.status = 'active')`
+  );
   if (rows.length === 0) {
     throw new Error('No organizations with assistants found');
   }

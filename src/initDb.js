@@ -9,7 +9,6 @@ async function init () {
       name TEXT NOT NULL,
       phone TEXT,
       instructions TEXT,
-      assistant_id TEXT,
       vector_store_id TEXT,
       language TEXT DEFAULT 'ar',
       working_hours_start TIME,
@@ -142,11 +141,34 @@ async function init () {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS bots (
+      id SERIAL PRIMARY KEY,
+      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+      assistant_id TEXT,
+      name TEXT,
+      phone TEXT,
+      status TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_bots_organization_id ON bots(organization_id)'
+  );
+  await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_assistant_id ON bots(assistant_id)'
+  );
+  await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_phone ON bots(phone)'
+  );
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'admin',
+      organization_id INTEGER REFERENCES organizations(id),
       totp_secret TEXT
     );
   `);
@@ -160,11 +182,19 @@ async function init () {
   );
 
   await pool.query(
+    'ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organizations(id)'
+  );
+
+  await pool.query(
     'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)'
   );
 
   await pool.query(
     'CREATE INDEX IF NOT EXISTS idx_conversations_customer_phone ON conversations(customer_phone)'
+  );
+
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_users_organization_id ON users(organization_id)'
   );
 
   if (process.env.ADMIN_PASSWORD) {

@@ -9,7 +9,13 @@ async function upload (orgId, filePath) {
     throw new Error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
   }
 
-  const orgRes = await pool.query('SELECT assistant_id, vector_store_id FROM organizations WHERE id=$1', [orgId]);
+  const orgRes = await pool.query(
+    `SELECT b.assistant_id, o.vector_store_id
+     FROM organizations o
+     JOIN bots b ON b.organization_id = o.id
+     WHERE o.id=$1`,
+    [orgId]
+  );
   const org = orgRes.rows[0];
   if (!org) {
     throw new Error('Organization not found');
