@@ -60,7 +60,7 @@ describe('admin routes', () => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
       if (text.includes('SELECT password_hash')) {
-        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: 'AAAA' }] };
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: 'AAAA', organization_id: null }] };
       }
       return { rows: [] };
     });
@@ -84,7 +84,7 @@ describe('admin routes', () => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
       if (text.includes('SELECT password_hash')) {
-        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: null }] };
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: null, organization_id: null }] };
       }
       return { rows: [] };
     });
@@ -98,7 +98,7 @@ describe('admin routes', () => {
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
       if (text.includes('SELECT password_hash')) {
-        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: null }] };
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: null, organization_id: null }] };
       }
       if (text.startsWith('SELECT totp_secret FROM users')) {
         throw new Error('fail');
@@ -118,7 +118,7 @@ describe('admin routes', () => {
     let secret = null;
     pool.query.mockImplementation(async (text, params) => {
       if (text.includes('SELECT password_hash')) {
-        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: secret }] };
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: secret, organization_id: null }] };
       }
       if (text.startsWith('SELECT role, totp_secret')) {
         return { rows: [{ role: 'admin', totp_secret: secret }] };
@@ -215,6 +215,39 @@ describe('admin routes', () => {
       text: 'hi',
       phones: ['1', '2']
     });
+  });
+
+  it('restricts access to own organization for non-admin', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async text => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'editor', totp_secret: 'AAAA', organization_id: 1 }] };
+      }
+      if (text.includes('SELECT instructions FROM organizations')) {
+        return { rows: [{ instructions: '' }] };
+      }
+      return { rows: [] };
+    });
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=user&password=secret&token=123456');
+    await agent.get('/org/1/assistant').expect(200);
+    await agent.get('/org/2/assistant').expect(403);
+  });
+
+  it('allows admin to access any organization', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async text => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: 'AAAA', organization_id: null }] };
+      }
+      if (text.includes('SELECT instructions FROM organizations')) {
+        return { rows: [{ instructions: '' }] };
+      }
+      return { rows: [] };
+    });
+    const agent = request.agent(app);
+    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await agent.get('/org/2/assistant').expect(200);
   });
 
   it('serves unanswered questions page', async () => {

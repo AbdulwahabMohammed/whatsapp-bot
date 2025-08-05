@@ -15,5 +15,14 @@
       <option value="editor">editor</option>
     </select>
   </div>
+  <div class="mb-3">
+    <label class="form-label">Organization</label>
+    <select class="form-select" name="organization_id">
+      <option value="">None</option>
+      <% orgs.forEach(function(o){ %>
+        <option value="<%= o.id %>"><%= o.name %></option>
+      <% }) %>
+    </select>
+  </div>
   <button class="btn btn-primary" type="submit">Save</button>
 </form>

@@ -5,6 +5,7 @@
     <tr>
       <th>Username</th>
       <th>Role</th>
+      <th>Organization</th>
       <th></th>
     </tr>
   </thead>
@@ -12,11 +13,17 @@
   <% users.forEach(function(u){ %>
     <tr>
       <td><%= u.username %></td>
-      <td>
+      <td colspan="2">
         <form action="/users/<%= u.id %>/role" method="post" class="d-flex align-items-center">
           <select class="form-select form-select-sm me-2" name="role">
             <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>admin</option>
             <option value="editor" <%= u.role === 'editor' ? 'selected' : '' %>>editor</option>
+          </select>
+          <select class="form-select form-select-sm me-2" name="organization_id">
+            <option value="">None</option>
+            <% orgs.forEach(function(o){ %>
+              <option value="<%= o.id %>" <%= u.organization_id === o.id ? 'selected' : '' %>><%= o.name %></option>
+            <% }); %>
           </select>
           <button class="btn btn-sm btn-secondary" type="submit">Update</button>
         </form>
