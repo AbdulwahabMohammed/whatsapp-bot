@@ -68,4 +68,3 @@ describe('botManager', () => {
     expect(events.find(e => e.status === 'disconnected' && e.botId === 3)).toBeTruthy();
   });
 });
-
