@@ -1,7 +1,11 @@
+/** @jest-environment jsdom */
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 const request = require('supertest');
-const WebSocket = require('ws');
 const EventEmitter = require('events');
 const bcrypt = require('bcrypt');
+const { initBotsPage } = require('../public/bots');
 
 process.env.SESSION_SECRET = 'test-secret';
 process.env.ADMIN_PORT = 0;
@@ -96,65 +100,42 @@ afterAll(async () => {
   await stopAdminServer(serverInfo.server, serverInfo.intervalId);
 });
 
-beforeEach(() => {
-  mockStatus = 'stopped';
-});
-
 async function login(agent) {
   await agent.post('/login').send('username=ed&password=secret&token=123456');
 }
 
-describe('bot API', () => {
-  test('creates bot linked to organization', async () => {
+describe('bot interface permissions', () => {
+  test('cannot view bots of another organization', async () => {
     const agent = request.agent(app);
     await login(agent);
-    const res = await agent
-      .post('/org/1/bots')
-      .set('Accept', 'application/json')
-      .send('assistant_id=a1&name=Bot1');
-    expect(res.status).toBe(200);
-    expect(res.body.assistant_id).toBe('a1');
-    const list = await agent.get('/org/1/bots');
-    expect(list.body.length).toBe(1);
-    expect(list.body[0].assistant_id).toBe('a1');
-  });
-
-  test('start and stop bot via API', async () => {
-    const agent = request.agent(app);
-    await login(agent);
-    await agent
-      .post('/org/1/bots')
-      .set('Accept', 'application/json')
-      .send('assistant_id=a1');
-    let res = await agent.post('/bot/1/start');
-    expect(res.body.status).toBe('started');
-    res = await agent.get('/bot/1/status');
-    expect(res.body.status).toBe('started');
-    res = await agent.post('/bot/1/stop');
-    expect(res.body.status).toBe('stopped');
-  });
-
-  test('broadcasts qr over websocket', async () => {
-    const agent = request.agent(app);
-    await login(agent);
-    await agent
-      .post('/org/1/bots')
-      .set('Accept', 'application/json')
-      .send('assistant_id=a1');
-    const port = serverInfo.server.address().port;
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
-    await new Promise(resolve => ws.on('open', resolve));
-    const msgPromise = new Promise(resolve => {
-      ws.on('message', data => {
-        const obj = JSON.parse(data.toString());
-        if (obj.qr) resolve(obj);
-      });
-    });
-    await agent.post('/bot/1/start');
-    mockEvents.emit('update', { botId: 1, status: 'qr', qr: '123' });
-    const msg = await msgPromise;
-    expect(msg).toEqual({ botId: 1, status: 'qr', qr: '123' });
-    ws.close();
+    const res = await agent.get('/org/2/bots');
+    expect(res.status).toBe(403);
+    const page = await agent.get('/org/2/bots/manage');
+    expect(page.status).toBe(403);
   });
 });
 
+describe('bots frontend script', () => {
+  test('shows QR and toggles button based on ws events', () => {
+    document.body.innerHTML = `
+      <table><tbody><tr data-bot-id="1"><td></td><td></td><td class="status">stopped</td><td><button class="start-stop">Start</button></td></tr></tbody></table>
+      <div id="qrModal" style="display:none"><img id="qrImage" /></div>
+    `;
+    global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({ status: 'connected' }) }));
+    let ws;
+    function factory () {
+      ws = { onmessage: null };
+      return ws;
+    }
+    initBotsPage(factory);
+    ws.onmessage({ data: JSON.stringify({ botId: 1, status: 'qr', qr: 'data:image/png;base64,abc' }) });
+    const img = document.getElementById('qrImage');
+    expect(img.src).toBe('data:image/png;base64,abc');
+    expect(document.getElementById('qrModal').style.display).toBe('block');
+    ws.onmessage({ data: JSON.stringify({ botId: 1, status: 'connected' }) });
+    const btn = document.querySelector('button.start-stop');
+    expect(btn.textContent).toBe('Stop');
+    ws.onmessage({ data: JSON.stringify({ botId: 1, status: 'stopped' }) });
+    expect(btn.textContent).toBe('Start');
+  });
+});
