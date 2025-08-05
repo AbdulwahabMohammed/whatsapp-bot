@@ -1,6 +1,6 @@
 let handlers;
 const path = require('path');
-const mockSock = { ev: { on: jest.fn() }, sendMessage: jest.fn() };
+const mockSock = { sendMessage: jest.fn() };
 
 jest.mock('bullmq', () => {
   const __handlers = {};
@@ -11,10 +11,9 @@ jest.mock('bullmq', () => {
   };
 });
 
-jest.mock('@whiskeysockets/baileys', () => ({
-  default: jest.fn(() => mockSock),
-  useMultiFileAuthState: jest.fn(async () => ({ state: {}, saveCreds: jest.fn() })),
-  DisconnectReason: { loggedOut: 0 }
+jest.mock('../src/botManager', () => ({
+  getSocket: jest.fn(() => mockSock),
+  startBot: jest.fn()
 }));
 
 jest.mock('../src/db', () => ({ query: jest.fn().mockResolvedValue({ rows: [] }) }));
@@ -39,9 +38,29 @@ describe('worker message flow', () => {
     const bull = require('bullmq');
     Object.keys(bull.__handlers).forEach(k => delete bull.__handlers[k]);
     handlers = bull.__handlers;
-    require('../src/db').query.mockReset();
-    require('../src/db').query.mockResolvedValue({ rows: [{ id: 1, assistant_id: 'a1' }] });
-    mockSock.ev.on.mockReset();
+    const db = require('../src/db');
+    db.query.mockReset();
+    db.query.mockImplementation(async text => {
+      if (text.startsWith('SELECT working_hours_start')) {
+        return { rows: [{ working_hours_start: null, working_hours_end: null, instructions: null }] };
+      }
+      if (text.startsWith('SELECT id, thread_id, escalated FROM conversations')) {
+        return { rows: [] };
+      }
+      if (text.startsWith('INSERT INTO conversations')) {
+        return { rows: [{ id: 1, thread_id: 't1', escalated: false }] };
+      }
+      if (text.startsWith('SELECT COUNT(*) FROM messages WHERE conversation_id=$1')) {
+        return { rows: [{ count: '0' }] };
+      }
+      if (text.startsWith('SELECT summary FROM conversations WHERE id=$1')) {
+        return { rows: [{ summary: null }] };
+      }
+      if (text.startsWith('SELECT sender, text FROM messages WHERE conversation_id=$1 ORDER BY id')) {
+        return { rows: [] };
+      }
+      return { rows: [] };
+    });
     mockSock.sendMessage.mockReset();
     require('../src/chat').sendMessage.mockReset();
     global.fetch = jest.fn(() => Promise.resolve({}));
@@ -57,7 +76,7 @@ describe('worker message flow', () => {
     require('../src/chat').sendMessage.mockResolvedValue('reply');
     require('../src/worker');
     await new Promise(resolve => setImmediate(resolve));
-    await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
+    await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(require('../src/chat').sendMessage).toHaveBeenCalledWith(1, 'a1', '123', 'hi');
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', { text: 'reply' });
   });
@@ -68,6 +87,7 @@ describe('worker message flow', () => {
     await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({
       data: {
+        botId: 1,
         orgId: 1,
         assistantId: 'a1',
         sender: '123',
@@ -88,7 +108,7 @@ describe('worker message flow', () => {
     require('../src/chat').sendMessage.mockRejectedValue(new Error('fail'));
     require('../src/worker');
     await new Promise(resolve => setImmediate(resolve));
-    await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
+    await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(mockSock.sendMessage).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
@@ -99,7 +119,7 @@ describe('worker message flow', () => {
     require('../src/worker');
     await new Promise(resolve => setImmediate(resolve));
     const ts = 111;
-    await handlers.messages({ data: { orgId: 1, assistantId: 'a1', sender: '123', text: 'hi', receivedAt: ts } });
+    await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi', receivedAt: ts } });
     expect(global.fetch).toHaveBeenCalledTimes(2);
     const body = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(body).toEqual({ sender: '123', text: 'hi', timestamp: ts });
@@ -109,8 +129,16 @@ describe('worker message flow', () => {
     const db = require('../src/db');
     require('../src/worker');
     await new Promise(resolve => setImmediate(resolve));
-    db.query.mockResolvedValue({ rows: [{ id: 1 }] });
-    await handlers.bulkMessages({ data: { orgId: 1, phones: ['1', '2'], text: 'hi' } });
+    db.query.mockImplementation(async text => {
+      if (text.startsWith('SELECT id FROM conversations')) {
+        return { rows: [] };
+      }
+      if (text.startsWith('INSERT INTO conversations')) {
+        return { rows: [{ id: 1 }] };
+      }
+      return { rows: [] };
+    });
+    await handlers.bulkMessages({ data: { botId: 1, orgId: 1, phones: ['1', '2'], text: 'hi' } });
     expect(mockSock.sendMessage).toHaveBeenCalledTimes(2);
   });
 });
