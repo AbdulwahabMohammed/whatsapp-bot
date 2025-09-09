@@ -90,6 +90,19 @@ async function uploadFile (organizationId, filePath) {
   const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
   const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
+  // Verify the vector store exists; recreate if missing
+  if (vectorStoreId) {
+    try {
+      await vectorStoresApi.retrieve(vectorStoreId);
+    } catch (err) {
+      if (err.status === 404) {
+        vectorStoreId = null;
+      } else {
+        throw err;
+      }
+    }
+  }
+
   if (!vectorStoreId) {
     const vectorStore = await vectorStoresApi.create({
       name: `org-${organizationId}-store`
