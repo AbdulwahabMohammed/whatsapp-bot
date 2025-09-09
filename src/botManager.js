@@ -83,57 +83,80 @@ async function startBot (bot, attempt = 0) {
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
-    for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe) continue;
-      const sender = msg.key.remoteJid;
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.caption ||
-        msg.message.documentMessage?.caption;
+    try {
+      for (const msg of messages) {
+        if (!msg.message || msg.key.fromMe) continue;
+        const sender = msg.key.remoteJid;
+        const text =
+          msg.message.conversation ||
+          msg.message.extendedTextMessage?.text ||
+          msg.message.imageMessage?.caption ||
+          msg.message.documentMessage?.caption;
 
-      const messageType = getContentType(msg.message);
-      let attachmentType;
-      let attachmentPath;
-      if (messageType === 'imageMessage' || messageType === 'documentMessage') {
+        const messageType = getContentType(msg.message);
+        let attachmentType;
+        let attachmentPath;
+        if (messageType === 'imageMessage' || messageType === 'documentMessage') {
+          try {
+            const buffer = await downloadMediaMessage(
+              msg,
+              'buffer',
+              {},
+              { logger, reuploadRequest: sock.updateMediaMessage }
+            );
+            fs.mkdirSync(path.join(__dirname, '../uploads'), { recursive: true });
+            const ext =
+              messageType === 'imageMessage'
+                ? '.jpg'
+                : path.extname(msg.message.documentMessage?.fileName || '.bin');
+            const filename = `${Date.now()}-${msg.key.id}${ext}`;
+            const fullPath = path.join(__dirname, '../uploads', filename);
+            fs.writeFileSync(fullPath, buffer);
+            attachmentType = messageType === 'imageMessage' ? 'image' : 'document';
+            attachmentPath = path.join('uploads', filename);
+          } catch (e) {
+            logger.error('Failed to download attachment:', e);
+          }
+        }
+
+        if (!text && !attachmentPath) continue;
+        messageCounter.labels(String(botId), 'received').inc();
+
         try {
-          const buffer = await downloadMediaMessage(
-            msg,
-            'buffer',
-            {},
-            { logger, reuploadRequest: sock.updateMediaMessage }
-          );
-          fs.mkdirSync(path.join(__dirname, '../uploads'), { recursive: true });
-          const ext =
-            messageType === 'imageMessage'
-              ? '.jpg'
-              : path.extname(msg.message.documentMessage?.fileName || '.bin');
-          const filename = `${Date.now()}-${msg.key.id}${ext}`;
-          const fullPath = path.join(__dirname, '../uploads', filename);
-          fs.writeFileSync(fullPath, buffer);
-          attachmentType = messageType === 'imageMessage' ? 'image' : 'document';
-          attachmentPath = path.join('uploads', filename);
-        } catch (e) {
-          logger.error('Failed to download attachment:', e);
+          await messageQueue.add('message', {
+            botId,
+            orgId,
+            assistantId,
+            sender,
+            text,
+            attachmentType,
+            attachmentPath,
+            receivedAt: Date.now()
+          });
+        } catch (err) {
+          logger.error('Failed to queue message:', err);
         }
       }
-
-      if (!text && !attachmentPath) continue;
-      messageCounter.labels(String(botId), 'received').inc();
-
-      try {
-        await messageQueue.add('message', {
+    } catch (err) {
+      const isSessionErr =
+        err?.name === 'SessionError' ||
+        /Bad MAC/i.test(err?.message || '') ||
+        /SessionError/i.test(err?.message || '');
+      if (isSessionErr) {
+        logger.warn(`Bot ${botId}: session error detected: ${err.message}`);
+        stopBot(botId);
+        try {
+          fs.rmSync(path.join(__dirname, `../auth-${botId}`), { recursive: true, force: true });
+        } catch (e) {
+          logger.error(`Failed to remove auth-${botId}:`, e);
+        }
+        events.emit('update', {
           botId,
-          orgId,
-          assistantId,
-          sender,
-          text,
-          attachmentType,
-          attachmentPath,
-          receivedAt: Date.now()
+          status: 'stopped',
+          message: 'Session error. Please scan QR again.'
         });
-      } catch (err) {
-        logger.error('Failed to queue message:', err);
+      } else {
+        logger.error('Failed to process message:', err);
       }
     }
   });

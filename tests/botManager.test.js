@@ -1,5 +1,7 @@
 const EventEmitter = require('events');
 const { Boom } = require('@hapi/boom');
+const fs = require('fs');
+const path = require('path');
 
 const mockSock = {
   ev: new EventEmitter(),
@@ -43,6 +45,8 @@ describe('botManager', () => {
     try { botManager.stopBot(2); } catch (e) {}
     try { botManager.stopBot(3); } catch (e) {}
     try { botManager.stopBot(4); } catch (e) {}
+    try { botManager.stopBot(5); } catch (e) {}
+    fs.rmSync(path.join(__dirname, '../auth-5'), { recursive: true, force: true });
   });
 
   test('start and stop bot', async () => {
@@ -86,5 +90,35 @@ describe('botManager', () => {
     expect(botManager.getBotStatus(4)).toBe('conflict');
     expect(events.find(e => e.status === 'conflict' && e.botId === 4)).toBeTruthy();
     jest.useRealTimers();
+  });
+
+  test('cleans auth folder and notifies on session error', async () => {
+    const events = [];
+    botManager.events.on('update', e => events.push(e));
+    await botManager.startBot({ id: 5, organization_id: 1, assistant_id: 'a1' });
+
+    const authPath = path.join(__dirname, '../auth-5');
+    fs.mkdirSync(authPath, { recursive: true });
+
+    const { getContentType } = require('@whiskeysockets/baileys');
+    getContentType.mockImplementation(() => {
+      throw new Error('Bad MAC');
+    });
+
+    mockSock.ev.emit('messages.upsert', {
+      type: 'notify',
+      messages: [
+        {
+          key: { fromMe: false, remoteJid: '1', id: 'msg1' },
+          message: { conversation: 'hi' }
+        }
+      ]
+    });
+
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(fs.existsSync(authPath)).toBe(false);
+    expect(botManager.getBotStatus(5)).toBe('stopped');
+    expect(events.find(e => e.botId === 5 && e.status === 'stopped' && e.message)).toBeTruthy();
   });
 });
