@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "start": "node src/admin.js",
+    "start": "node src/index.js",
     "create-assistant": "node src/scripts/createAssistant.js",
     "upload-file": "node src/scripts/uploadFile.js",
     "generate-faq": "node src/scripts/generateFaq.js",
