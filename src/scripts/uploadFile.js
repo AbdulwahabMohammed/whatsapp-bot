@@ -44,6 +44,19 @@ async function upload (orgId, filePath) {
   let vectorStoreId = org.vector_store_id;
   const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
+  // Ensure existing vector store still exists; recreate on 404
+  if (vectorStoreId) {
+    try {
+      await vectorStoresApi.retrieve(vectorStoreId);
+    } catch (err) {
+      if (err.status === 404) {
+        vectorStoreId = null;
+      } else {
+        throw err;
+      }
+    }
+  }
+
   if (!vectorStoreId) {
     const vectorStore = await vectorStoresApi.create({
       name: `org-${orgId}-store`
