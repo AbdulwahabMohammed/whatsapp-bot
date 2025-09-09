@@ -286,4 +286,3 @@ const bulkWorker = new Worker(
 );
 
 startScheduler();
-

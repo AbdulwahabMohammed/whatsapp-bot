@@ -100,7 +100,7 @@ beforeEach(() => {
   mockStatus = 'stopped';
 });
 
-async function login(agent) {
+async function login (agent) {
   await agent.post('/login').send('username=ed&password=secret&token=123456');
 }
 
@@ -157,4 +157,3 @@ describe('bot API', () => {
     ws.close();
   });
 });
-
