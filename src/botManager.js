@@ -52,11 +52,18 @@ async function startBot (bot, attempt = 0) {
 
     if (connection === 'close') {
       connectionGauge.labels(String(botId)).set(0);
+      const statusCode =
+        lastDisconnect?.error instanceof Boom ? lastDisconnect.error.output.statusCode : 0;
+      if (statusCode === DisconnectReason.connectionReplaced) {
+        const message = `Session conflict. Delete auth-${botId} and scan QR again.`;
+        bots.set(botId, { ...bots.get(botId), sock: null, status: 'conflict' });
+        events.emit('update', { botId, status: 'conflict', message });
+        logger.warn(`Bot ${botId}: ${message}`);
+        return;
+      }
       bots.set(botId, { ...bots.get(botId), status: 'disconnected' });
       events.emit('update', { botId, status: 'disconnected' });
-      const shouldReconnect =
-        (lastDisconnect?.error instanceof Boom ? lastDisconnect.error.output.statusCode : 0) !==
-        DisconnectReason.loggedOut;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       if (shouldReconnect && attempt < MAX_RECONNECTS) {
         const delay = Math.min(30000, 2 ** attempt * 1000);
         setTimeout(() => {

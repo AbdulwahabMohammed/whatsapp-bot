@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const { Boom } = require('@hapi/boom');
 
 const mockSock = {
   ev: new EventEmitter(),
@@ -12,7 +13,7 @@ jest.mock('@whiskeysockets/baileys', () => ({
   __mockSock: mockSock,
   default: jest.fn(() => mockSock),
   useMultiFileAuthState: jest.fn(async () => ({ state: {}, saveCreds: jest.fn() })),
-  DisconnectReason: { loggedOut: 0 },
+  DisconnectReason: { loggedOut: 0, connectionReplaced: 428 },
   downloadMediaMessage: jest.fn(),
   getContentType: jest.fn()
 }));
@@ -41,6 +42,7 @@ describe('botManager', () => {
     try { botManager.stopBot(1); } catch (e) {}
     try { botManager.stopBot(2); } catch (e) {}
     try { botManager.stopBot(3); } catch (e) {}
+    try { botManager.stopBot(4); } catch (e) {}
   });
 
   test('start and stop bot', async () => {
@@ -66,5 +68,23 @@ describe('botManager', () => {
     mockSock.ev.emit('connection.update', { connection: 'close', lastDisconnect: { error: new Error('x') } });
     expect(botManager.getBotStatus(3)).toBe('disconnected');
     expect(events.find(e => e.status === 'disconnected' && e.botId === 3)).toBeTruthy();
+  });
+
+  test('sets conflict status and avoids reconnect on connection replace', async () => {
+    jest.useFakeTimers();
+    const events = [];
+    botManager.events.on('update', e => events.push(e));
+    const startSpy = jest.spyOn(botManager, 'startBot');
+    await botManager.startBot({ id: 4, organization_id: 1, assistant_id: 'a1' });
+    startSpy.mockClear();
+    mockSock.ev.emit('connection.update', {
+      connection: 'close',
+      lastDisconnect: { error: new Boom('conflict', { statusCode: 428 }) }
+    });
+    jest.runAllTimers();
+    expect(startSpy).not.toHaveBeenCalled();
+    expect(botManager.getBotStatus(4)).toBe('conflict');
+    expect(events.find(e => e.status === 'conflict' && e.botId === 4)).toBeTruthy();
+    jest.useRealTimers();
   });
 });
