@@ -32,10 +32,17 @@ async function main () {
   logger.info('All organizations:', orgs);
 }
 
-if (require.main === module) {
-  main().catch(err => {
-    logger.error(err);
-  });
+async function start () {
+  try {
+    await main();
+  } catch (err) {
+    logger.error('Failed to create/list organizations', { error: err.message, stack: err.stack });
+    process.exit(1);
+  }
 }
 
-module.exports = { createOrganization, listOrganizations };
+if (require.main === module) {
+  start();
+}
+
+module.exports = { createOrganization, listOrganizations, start };

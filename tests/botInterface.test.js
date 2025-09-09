@@ -100,7 +100,7 @@ afterAll(async () => {
   await stopAdminServer(serverInfo.server, serverInfo.intervalId);
 });
 
-async function login(agent) {
+async function login (agent) {
   await agent.post('/login').send('username=ed&password=secret&token=123456');
 }
 
