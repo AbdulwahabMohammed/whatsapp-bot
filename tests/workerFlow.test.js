@@ -30,6 +30,10 @@ jest.mock('../src/queue', () => ({
   getQueueLength: jest.fn()
 }));
 
+jest.mock('../src/checkEnv', () => ({
+  checkEnv: jest.fn(() => Promise.resolve())
+}));
+
 jest.mock('../src/db', () => ({ query: jest.fn().mockResolvedValue({ rows: [] }) }));
 
 jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
@@ -49,6 +53,9 @@ jest.mock('../src/openai', () => ({
 describe('worker message flow', () => {
   beforeEach(() => {
     jest.resetModules();
+    const env = require('../src/checkEnv');
+    env.checkEnv.mockClear();
+    env.checkEnv.mockResolvedValue();
     const Redis = require('ioredis');
     Redis.mockClear();
     mockRedisInstance.connect.mockReset();

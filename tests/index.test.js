@@ -2,6 +2,10 @@ jest.mock('../src/db', () => ({
   query: jest.fn().mockRejectedValue(new Error('DB connection failed'))
 }));
 
+jest.mock('../src/checkEnv', () => ({
+  checkEnv: jest.fn(() => Promise.resolve())
+}));
+
 jest.mock('../src/logger', () => ({
   info: jest.fn(),
   error: jest.fn()

@@ -1,8 +1,11 @@
+const logger = require('./logger');
+const { checkEnv } = require('./checkEnv');
 const { Worker } = require('bullmq');
 const path = require('path');
 const { sendMessage } = require('./chat');
 const pool = require('./db');
-const logger = require('./logger');
+
+const envCheckPromise = checkEnv();
 
 let openai;
 let openaiInitError;
@@ -480,6 +483,14 @@ function startWorkers () {
 }
 
 async function bootstrap () {
+  try {
+    await envCheckPromise;
+  } catch (error) {
+    logger.error(`Environment validation failed: ${error.message}`, { stack: error.stack });
+    process.exit(1);
+    return;
+  }
+
   try {
     const version = await ensureRedisVersion({ url: REDIS_URL, minVersion: MIN_REDIS_VERSION });
     logger.info(`Redis version ${version} verified (required ≥ ${MIN_REDIS_VERSION}).`);

@@ -1,0 +1,115 @@
+jest.mock('dotenv', () => ({ config: jest.fn() }));
+
+const mockFsModule = {
+  existsSync: jest.fn()
+};
+jest.mock('fs', () => mockFsModule);
+
+const mockPgClientFactory = jest.fn();
+jest.mock('pg', () => ({ Client: mockPgClientFactory }));
+
+const mockRedisFactory = jest.fn();
+jest.mock('ioredis', () => mockRedisFactory);
+
+describe('checkEnv', () => {
+  const originalEnv = process.env;
+  let mockClient;
+  let mockRedisInstance;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv };
+    process.env.PGHOST = 'localhost';
+    process.env.PGUSER = 'user';
+    process.env.PGDATABASE = 'db';
+    process.env.PGPASSWORD = 'pass';
+    process.env.PGPORT = '5432';
+    process.env.REDIS_URL = 'redis://localhost:6379';
+
+    mockFsModule.existsSync.mockReset();
+
+    mockClient = {
+      connect: jest.fn().mockResolvedValue(),
+      query: jest.fn(),
+      end: jest.fn().mockResolvedValue()
+    };
+    mockPgClientFactory.mockReset();
+    mockPgClientFactory.mockImplementation(() => mockClient);
+
+    mockRedisInstance = {
+      connect: jest.fn().mockResolvedValue(),
+      ping: jest.fn().mockResolvedValue('PONG'),
+      disconnect: jest.fn()
+    };
+    mockRedisFactory.mockReset();
+    mockRedisFactory.mockImplementation(() => mockRedisInstance);
+
+    mockClient.query.mockImplementation(async sql => {
+      if (sql === 'SELECT 1') {
+        return { rows: [] };
+      }
+      if (sql.startsWith('SELECT id')) {
+        return { rows: [] };
+      }
+      return { rows: [] };
+    });
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  test('resolves when all services and auth folders are available', async () => {
+    mockFsModule.existsSync.mockReturnValue(true);
+
+    const { checkEnv } = require('../src/checkEnv');
+    await expect(checkEnv()).resolves.toBeUndefined();
+    await expect(checkEnv()).resolves.toBeUndefined();
+
+    expect(mockClient.connect).toHaveBeenCalledTimes(1);
+    expect(mockClient.end).toHaveBeenCalledTimes(1);
+    expect(mockRedisInstance.connect).toHaveBeenCalledTimes(1);
+    expect(mockRedisInstance.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  test('throws when PostgreSQL environment variables are missing', async () => {
+    delete process.env.PGUSER;
+
+    const { checkEnv } = require('../src/checkEnv');
+    await expect(checkEnv()).rejects.toThrow('Missing PostgreSQL environment variables');
+    expect(mockPgClientFactory).not.toHaveBeenCalled();
+  });
+
+  test('throws when PostgreSQL connection fails', async () => {
+    mockFsModule.existsSync.mockReturnValue(true);
+    mockClient.connect.mockRejectedValue(new Error('connection refused'));
+
+    const { checkEnv } = require('../src/checkEnv');
+    await expect(checkEnv()).rejects.toThrow('Unable to connect to PostgreSQL');
+  });
+
+  test('throws when Redis is unavailable', async () => {
+    mockFsModule.existsSync.mockReturnValue(true);
+    mockRedisInstance.connect.mockRejectedValue(new Error('redis down'));
+
+    const { checkEnv } = require('../src/checkEnv');
+    await expect(checkEnv()).rejects.toThrow('Unable to connect to Redis');
+    expect(mockRedisInstance.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  test('throws when WhatsApp auth folders are missing', async () => {
+    mockClient.query.mockImplementation(async sql => {
+      if (sql === 'SELECT 1') {
+        return { rows: [] };
+      }
+      if (sql.startsWith('SELECT id')) {
+        return { rows: [{ id: 7, name: 'Support', phone: '+20123' }] };
+      }
+      return { rows: [] };
+    });
+    mockFsModule.existsSync.mockReturnValue(false);
+
+    const { checkEnv } = require('../src/checkEnv');
+    await expect(checkEnv()).rejects.toThrow('Missing WhatsApp auth folders');
+  });
+});
