@@ -81,6 +81,33 @@ describe('worker message flow', () => {
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', { text: 'reply' });
   });
 
+  test('saves image message without caption', async () => {
+    const chat = require('../src/chat');
+    const db = require('../src/db');
+    chat.sendMessage.mockResolvedValue(null);
+    require('../src/worker');
+    await new Promise(resolve => setImmediate(resolve));
+    await expect(
+      handlers.messages({
+        data: {
+          botId: 1,
+          orgId: 1,
+          assistantId: 'a1',
+          sender: '123',
+          text: null,
+          attachmentType: 'image',
+          attachmentPath: 'uploads/pic.jpg'
+        }
+      })
+    ).resolves.toBeUndefined();
+
+    expect(chat.sendMessage).toHaveBeenCalledWith(1, 'a1', '123', '');
+    const insertCalls = db.query.mock.calls.filter(call => call[0].startsWith('INSERT INTO messages'));
+    const userInsert = insertCalls.find(call => call[1]?.[1] === 'user');
+    expect(userInsert).toBeDefined();
+    expect(userInsert[1][2]).toBe('');
+  });
+
   test('sends attachment if provided', async () => {
     require('../src/chat').sendMessage.mockResolvedValue('file');
     require('../src/worker');

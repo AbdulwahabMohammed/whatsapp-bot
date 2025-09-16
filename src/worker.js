@@ -71,6 +71,7 @@ const worker = new Worker(
       replyAttachmentType,
       replyAttachmentPath
     } = job.data;
+    const messageText = text || '';
 
     let sock = getSocket(botId);
     if (!sock) {
@@ -96,11 +97,11 @@ const worker = new Worker(
       if (conv.escalated) {
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
-          [conv.id, 'user', text, attachmentType, attachmentPath]
+          [conv.id, 'user', messageText, attachmentType, attachmentPath]
         );
         await postWebhook({
           sender,
-          text,
+          text: messageText,
           timestamp: job.data.receivedAt || Date.now()
         });
         return;
@@ -109,19 +110,19 @@ const worker = new Worker(
       if (!withinWorkingHours(org.working_hours_start, org.working_hours_end)) {
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
-          [conv.id, 'user', text, attachmentType, attachmentPath]
+          [conv.id, 'user', messageText, attachmentType, attachmentPath]
         );
         await postWebhook({
           sender,
-          text,
+          text: messageText,
           timestamp: job.data.receivedAt || Date.now()
         });
         const reply = org.instructions || 'سنعود خلال ساعات العمل';
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)',
-          [conv.id, 'assistant', reply]
+          [conv.id, 'assistant', reply || '']
         );
-        await postWebhook({ sender: 'assistant', text: reply, timestamp: Date.now() });
+        await postWebhook({ sender: 'assistant', text: reply || '', timestamp: Date.now() });
         const latency = Date.now() - (job.data.receivedAt || Date.now());
         await pool.query(
           'INSERT INTO conversation_stats (conversation_id, response_time_ms) VALUES ($1,$2)',
@@ -132,17 +133,17 @@ const worker = new Worker(
         return;
       }
 
-      const reply = await sendMessage(orgId, assistantId, sender, text);
+      const reply = await sendMessage(orgId, assistantId, sender, messageText);
       if (reply === null) {
         const conversationId = conv.id;
         if (conversationId) {
           await pool.query(
             'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
-            [conversationId, 'user', text, attachmentType, attachmentPath]
+            [conversationId, 'user', messageText, attachmentType, attachmentPath]
           );
           await postWebhook({
             sender,
-            text,
+            text: messageText,
             timestamp: job.data.receivedAt || Date.now()
           });
         }
@@ -151,27 +152,27 @@ const worker = new Worker(
       if (/لا أفهم|غير واضح/.test(reply)) {
         await pool.query(
           'INSERT INTO unanswered_questions (phone, message) VALUES ($1,$2)',
-          [sender, text]
+          [sender, messageText]
         );
       }
       const conversationId = conv.id;
       if (conversationId) {
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
-          [conversationId, 'user', text, attachmentType, attachmentPath]
+          [conversationId, 'user', messageText, attachmentType, attachmentPath]
         );
         await postWebhook({
           sender,
-          text,
+          text: messageText,
           timestamp: job.data.receivedAt || Date.now()
         });
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text, attachment_type, attachment_path) VALUES ($1,$2,$3,$4,$5)',
-          [conversationId, 'assistant', reply, replyAttachmentType, replyAttachmentPath]
+          [conversationId, 'assistant', reply || '', replyAttachmentType, replyAttachmentPath]
         );
         await postWebhook({
           sender: 'assistant',
-          text: reply,
+          text: reply || '',
           timestamp: Date.now()
         });
 
@@ -246,6 +247,7 @@ const bulkWorker = new Worker(
   'bulkMessages',
   async job => {
     const { botId, orgId, phones, text } = job.data;
+    const bulkText = text || '';
     const sock = getSocket(botId);
     if (!sock) {
       logger.error(`No WhatsApp connection for bot ${botId}`);
@@ -268,14 +270,14 @@ const bulkWorker = new Worker(
         }
         await pool.query(
           'INSERT INTO messages (conversation_id, sender, text) VALUES ($1,$2,$3)',
-          [conversationId, 'admin', text]
+          [conversationId, 'admin', bulkText]
         );
         await postWebhook({
           sender: 'admin',
-          text,
+          text: bulkText,
           timestamp: Date.now()
         });
-        await sock.sendMessage(phone, { text });
+        await sock.sendMessage(phone, { text: bulkText });
         await new Promise(resolve => setTimeout(resolve, BULK_MESSAGE_DELAY));
       } catch (err) {
         logger.error('Failed to send bulk message:', err);
