@@ -7,6 +7,108 @@ const openai = require('./openai');
 const { messageCounter } = require('./metrics');
 const { startScheduler } = require('./scheduler');
 const { getSocket, startBot } = require('./botManager');
+const { messageQueue, bulkQueue } = require('./queue');
+
+const MIN_RETRY_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 60000;
+const DEFAULT_RETRY_DELAY_MS = 5000;
+const CONNECTION_RETRY_DELAY_MS = Math.min(
+  MAX_RETRY_DELAY_MS,
+  Math.max(
+    MIN_RETRY_DELAY_MS,
+    parseInt(process.env.CONNECTION_RETRY_DELAY || DEFAULT_RETRY_DELAY_MS, 10) || DEFAULT_RETRY_DELAY_MS
+  )
+);
+
+function isSocketOpen (sock) {
+  return Boolean(sock?.ws?.readyState === 'open');
+}
+
+async function ensureSocketOpen (botId) {
+  let sock = getSocket(botId);
+  if (isSocketOpen(sock)) {
+    return { sock, retriable: true };
+  }
+
+  let botRow;
+  try {
+    const { rows } = await pool.query('SELECT * FROM bots WHERE id=$1', [botId]);
+    botRow = rows[0];
+  } catch (err) {
+    logger.error(`Failed to load bot ${botId} for reconnection:`, err);
+    return { sock: null, retriable: true };
+  }
+
+  if (!botRow) {
+    logger.error(`Bot ${botId} not found while trying to establish a WhatsApp connection.`);
+    return { sock: null, retriable: false };
+  }
+
+  try {
+    await startBot(botRow);
+  } catch (err) {
+    logger.error(`Failed to start bot ${botId}:`, err);
+    return { sock: null, retriable: true };
+  }
+
+  sock = getSocket(botId);
+  if (isSocketOpen(sock)) {
+    return { sock, retriable: true };
+  }
+
+  return { sock: null, retriable: true };
+}
+
+async function rescheduleJob (job, queue, defaultJobName, reason, overrideData) {
+  const jobName = job.name || defaultJobName;
+  const delay = CONNECTION_RETRY_DELAY_MS;
+  const data = overrideData ?? job.data;
+  const contextId = job.id || jobName;
+  logger.warn(
+    `Rescheduling job ${contextId} due to WhatsApp connection issue: ${reason}. Retrying in ${delay}ms.`
+  );
+
+  if (typeof job.retry === 'function') {
+    try {
+      await job.retry();
+      return;
+    } catch (err) {
+      logger.warn('job.retry failed, falling back to queue requeue:', err);
+    }
+  }
+
+  try {
+    await queue.add(jobName, data, { delay });
+  } catch (err) {
+    logger.error('Failed to enqueue job retry:', err);
+    throw err;
+  }
+}
+
+async function ensureReadySocketOrReschedule (
+  job,
+  botId,
+  queue,
+  defaultJobName,
+  currentSock,
+  overrideData
+) {
+  if (isSocketOpen(currentSock)) {
+    return currentSock;
+  }
+
+  const { sock, retriable } = await ensureSocketOpen(botId);
+  if (sock) {
+    return sock;
+  }
+
+  if (retriable) {
+    const state = getSocket(botId)?.ws?.readyState ?? 'unavailable';
+    await rescheduleJob(job, queue, defaultJobName, `state ${state}`, overrideData);
+  }
+
+  return null;
+}
 
 function withinWorkingHours (start, end) {
   if (!start || !end) return true;
@@ -73,17 +175,15 @@ const worker = new Worker(
     } = job.data;
     const messageText = text || '';
 
-    let sock = getSocket(botId);
+    const socketResult = await ensureSocketOpen(botId);
+    let sock = socketResult.sock;
     if (!sock) {
-      // try to start the bot if not running
-      const { rows } = await pool.query('SELECT * FROM bots WHERE id=$1', [botId]);
-      if (rows[0]) {
-        await startBot(rows[0]);
-        sock = getSocket(botId);
+      if (socketResult.retriable) {
+        const state = getSocket(botId)?.ws?.readyState ?? 'unavailable';
+        await rescheduleJob(job, messageQueue, job.name || 'message', `state ${state}`);
+      } else {
+        logger.error(`Unable to start WhatsApp bot ${botId}; dropping job ${job.id || 'messages'}.`);
       }
-    }
-    if (!sock) {
-      logger.error(`No WhatsApp connection for bot ${botId}`);
       return;
     }
 
@@ -129,6 +229,15 @@ const worker = new Worker(
           [conv.id, latency]
         );
         messageCounter.labels(String(botId), 'sent').inc();
+        sock = await ensureReadySocketOrReschedule(
+          job,
+          botId,
+          messageQueue,
+          job.name || 'message',
+          sock,
+          undefined
+        );
+        if (!sock) return;
         await sock.sendMessage(sender, { text: reply });
         return;
       }
@@ -222,14 +331,33 @@ const worker = new Worker(
           };
         }
       }
+      sock = await ensureReadySocketOrReschedule(
+        job,
+        botId,
+        messageQueue,
+        job.name || 'message',
+        sock,
+        undefined
+      );
+      if (!sock) return;
       await sock.sendMessage(sender, content);
     } catch (err) {
       if (err && (err.status === 429 || err.code === 'insufficient_quota')) {
         logger.warn('OpenAI quota exceeded or rate limited:', err);
         try {
-          await sock.sendMessage(sender, {
-            text: 'Service temporarily unavailable. Please try again later.'
-          });
+          sock = await ensureReadySocketOrReschedule(
+            job,
+            botId,
+            messageQueue,
+            job.name || 'message',
+            sock,
+            undefined
+          );
+          if (sock) {
+            await sock.sendMessage(sender, {
+              text: 'Service temporarily unavailable. Please try again later.'
+            });
+          }
         } catch (notifyErr) {
           logger.error('Failed to notify user about service outage:', notifyErr);
         }
@@ -248,13 +376,31 @@ const bulkWorker = new Worker(
   async job => {
     const { botId, orgId, phones, text } = job.data;
     const bulkText = text || '';
-    const sock = getSocket(botId);
+    const socketResult = await ensureSocketOpen(botId);
+    let sock = socketResult.sock;
     if (!sock) {
-      logger.error(`No WhatsApp connection for bot ${botId}`);
+      if (socketResult.retriable) {
+        const state = getSocket(botId)?.ws?.readyState ?? 'unavailable';
+        await rescheduleJob(job, bulkQueue, job.name || 'broadcast', `state ${state}`);
+      } else {
+        logger.error(
+          `Unable to start WhatsApp bot ${botId} for bulk job ${job.id || 'bulkMessages'}.`
+        );
+      }
       return;
     }
-    for (const phone of phones) {
+    for (let index = 0; index < phones.length; index++) {
+      const phone = phones[index];
       try {
+        sock = await ensureReadySocketOrReschedule(
+          job,
+          botId,
+          bulkQueue,
+          job.name || 'broadcast',
+          sock,
+          { ...job.data, phones: phones.slice(index) }
+        );
+        if (!sock) return;
         const { rows } = await pool.query(
           'SELECT id FROM conversations WHERE organization_id=$1 AND customer_phone=$2 ORDER BY id DESC LIMIT 1',
           [orgId, phone]
