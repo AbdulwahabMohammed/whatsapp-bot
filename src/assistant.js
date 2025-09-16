@@ -17,19 +17,23 @@ const {
   matchesSystemInstructions
 } = require('./utils/systemInstructions');
 
-function ensureOpenAIClient () {
+function getOpenAIClient (context) {
   if (openai) {
     return openai;
   }
   const baseError = openaiInitError || new Error('OpenAI client is not initialized');
-  throw new Error(`OpenAI client is not configured: ${baseError.message}`, { cause: baseError });
+  logger.error(`OpenAI client unavailable for assistant ${context}.`, baseError);
+  return null;
 }
 
 /**
  * Create an assistant for an organization.
  */
 async function createAssistant (organizationId) {
-  const client = ensureOpenAIClient();
+  const client = getOpenAIClient('create');
+  if (!client) {
+    return null;
+  }
   const orgRes = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [organizationId]);
   const botRes = await pool.query('SELECT * FROM bots WHERE organization_id=$1', [organizationId]);
   const org = orgRes.rows[0] || {};
@@ -75,7 +79,10 @@ async function createAssistant (organizationId) {
  * Upload a file and attach it to the organization assistant.
  */
 async function uploadFile (organizationId, filePath) {
-  const client = ensureOpenAIClient();
+  const client = getOpenAIClient('upload');
+  if (!client) {
+    return null;
+  }
   const orgRes = await pool.query(
     `SELECT b.assistant_id, o.vector_store_id, o.instructions
      FROM organizations o

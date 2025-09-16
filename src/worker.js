@@ -18,17 +18,31 @@ const { getSocket, startBot } = require('./botManager');
 const { messageQueue, bulkQueue } = require('./queue');
 const { MIN_REDIS_VERSION, ensureRedisVersion } = require('./redisVersion');
 
+const FAST_DEV = process.env.FAST_DEV === 'true';
+
+function isUnset (value) {
+  return value === undefined || value === null || value === '';
+}
+
+function resolveIntEnv (name, defaultValue, devDefault) {
+  const raw = process.env[name];
+  const fallback = FAST_DEV && isUnset(raw) ? devDefault : defaultValue;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const redisConnection = { url: REDIS_URL };
 
 const MIN_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 60000;
 const DEFAULT_RETRY_DELAY_MS = 5000;
+const DEV_RETRY_DELAY_MS = 1000;
 const CONNECTION_RETRY_DELAY_MS = Math.min(
   MAX_RETRY_DELAY_MS,
   Math.max(
     MIN_RETRY_DELAY_MS,
-    parseInt(process.env.CONNECTION_RETRY_DELAY || DEFAULT_RETRY_DELAY_MS, 10) || DEFAULT_RETRY_DELAY_MS
+    resolveIntEnv('CONNECTION_RETRY_DELAY', DEFAULT_RETRY_DELAY_MS, DEV_RETRY_DELAY_MS)
   )
 );
 
@@ -175,9 +189,11 @@ async function postWebhook (data) {
 }
 
 const SUMMARY_LIMIT = parseInt(process.env.SUMMARY_MESSAGE_LIMIT || '20', 10);
+const DEFAULT_BULK_DELAY_MS = 500;
+const DEV_BULK_DELAY_MS = 0;
 const BULK_MESSAGE_DELAY = Math.max(
   0,
-  Math.min(parseInt(process.env.BULK_MESSAGE_DELAY || '500', 10) || 500, 60000)
+  Math.min(resolveIntEnv('BULK_MESSAGE_DELAY', DEFAULT_BULK_DELAY_MS, DEV_BULK_DELAY_MS), 60000)
 );
 
 function startWorkers () {
@@ -505,4 +521,11 @@ async function bootstrap () {
 
 const bootstrapPromise = bootstrap();
 
-module.exports = { bootstrapPromise };
+module.exports = {
+  bootstrapPromise,
+  __internals: {
+    FAST_DEV,
+    CONNECTION_RETRY_DELAY_MS,
+    BULK_MESSAGE_DELAY
+  }
+};

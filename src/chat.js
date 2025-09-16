@@ -1,6 +1,32 @@
 const logger = require('./logger');
 const pool = require('./db');
 
+const FAST_DEV = process.env.FAST_DEV === 'true';
+const DETECT_LANGUAGE_DISABLED = process.env.DETECT_LANGUAGE === 'false';
+
+function isUnset (value) {
+  return value === undefined || value === null || value === '';
+}
+
+function resolveIntEnv (name, defaultValue, devDefault) {
+  const raw = process.env[name];
+  const fallback = FAST_DEV && isUnset(raw) ? devDefault : defaultValue;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function resolveFloatEnv (name, defaultValue, devDefault) {
+  const raw = process.env[name];
+  const fallback = FAST_DEV && isUnset(raw) ? devDefault : defaultValue;
+  const parsed = parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+const RUN_MAX_RETRIES = resolveIntEnv('RUN_MAX_RETRIES', 60, 20);
+const RUN_INITIAL_DELAY_MS = resolveIntEnv('RUN_INITIAL_DELAY_MS', 1000, 300);
+const RUN_MAX_DELAY_MS = resolveIntEnv('RUN_MAX_DELAY_MS', 5000, 1500);
+const RUN_DELAY_GROWTH = resolveFloatEnv('RUN_DELAY_GROWTH', 1.2, 1.15);
+
 let openai;
 let openaiInitError;
 try {
@@ -84,7 +110,7 @@ async function sendMessage (orgId, assistantId, customerPhone, text) {
   }
 
   // Detect language on first message
-  if (!conv.detected_language) {
+  if (!DETECT_LANGUAGE_DISABLED && !conv.detected_language) {
     try {
       const resp = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -120,10 +146,10 @@ async function sendMessage (orgId, assistantId, customerPhone, text) {
   });
 
   let status = run.status;
-  const MAX_RETRIES = 60; // upper bound on how many status checks to perform
-  let delay = 1000;
-  const MAX_DELAY = 5000;
-  const DELAY_GROWTH = 1.2;
+  const MAX_RETRIES = RUN_MAX_RETRIES; // upper bound on how many status checks to perform
+  let delay = RUN_INITIAL_DELAY_MS;
+  const MAX_DELAY = RUN_MAX_DELAY_MS;
+  const DELAY_GROWTH = RUN_DELAY_GROWTH;
   let attempts = 0;
   while (status !== 'completed') {
     if (['failed', 'cancelled'].includes(status)) {

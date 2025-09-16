@@ -65,11 +65,13 @@ describe('OpenAI initialization guardrails', () => {
       assistant = require('../src/assistant');
     });
 
-    await expect(assistant.createAssistant(1)).rejects.toThrow(
-      'OpenAI client is not configured: OPENAI_API_KEY is missing or invalid'
-    );
+    await expect(assistant.createAssistant(1)).resolves.toBeNull();
     expect(loggerMock.error).toHaveBeenCalledWith(
       'Failed to initialize OpenAI client for assistant module:',
+      expect.any(Error)
+    );
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'OpenAI client unavailable for assistant create.',
       expect.any(Error)
     );
   });
