@@ -1,6 +1,6 @@
 let handlers;
 const path = require('path');
-const mockSock = { sendMessage: jest.fn() };
+const mockSock = { sendMessage: jest.fn(), ws: { readyState: 'open' } };
 
 jest.mock('bullmq', () => {
   const __handlers = {};
@@ -14,6 +14,12 @@ jest.mock('bullmq', () => {
 jest.mock('../src/botManager', () => ({
   getSocket: jest.fn(() => mockSock),
   startBot: jest.fn()
+}));
+
+jest.mock('../src/queue', () => ({
+  messageQueue: { add: jest.fn(), getWaitingCount: jest.fn() },
+  bulkQueue: { add: jest.fn() },
+  getQueueLength: jest.fn()
 }));
 
 jest.mock('../src/db', () => ({ query: jest.fn().mockResolvedValue({ rows: [] }) }));
@@ -41,6 +47,9 @@ describe('worker message flow', () => {
     const db = require('../src/db');
     db.query.mockReset();
     db.query.mockImplementation(async text => {
+      if (text.startsWith('SELECT * FROM bots WHERE id=$1')) {
+        return { rows: [{ id: 1, organization_id: 1, assistant_id: 'a1' }] };
+      }
       if (text.startsWith('SELECT working_hours_start')) {
         return { rows: [{ working_hours_start: null, working_hours_end: null, instructions: null }] };
       }
@@ -62,9 +71,15 @@ describe('worker message flow', () => {
       return { rows: [] };
     });
     mockSock.sendMessage.mockReset();
+    mockSock.ws.readyState = 'open';
     require('../src/chat').sendMessage.mockReset();
     global.fetch = jest.fn(() => Promise.resolve({}));
     process.env.WEBHOOK_URL = '';
+    const queue = require('../src/queue');
+    queue.messageQueue.add.mockReset();
+    queue.messageQueue.add.mockResolvedValue({});
+    queue.bulkQueue.add.mockReset();
+    queue.bulkQueue.add.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -79,6 +94,31 @@ describe('worker message flow', () => {
     await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(require('../src/chat').sendMessage).toHaveBeenCalledWith(1, 'a1', '123', 'hi');
     expect(mockSock.sendMessage).toHaveBeenCalledWith('123', { text: 'reply' });
+  });
+
+  test('requeues job when socket is disconnected', async () => {
+    const chat = require('../src/chat');
+    const queue = require('../src/queue');
+    const botManager = require('../src/botManager');
+    chat.sendMessage.mockResolvedValue('reply');
+    mockSock.ws.readyState = 'closed';
+    require('../src/worker');
+    await new Promise(resolve => setImmediate(resolve));
+    const job = {
+      id: '1',
+      name: 'message',
+      data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' }
+    };
+    await handlers.messages(job);
+    expect(botManager.startBot).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, organization_id: 1, assistant_id: 'a1' })
+    );
+    expect(queue.messageQueue.add).toHaveBeenCalledWith(
+      'message',
+      job.data,
+      expect.objectContaining({ delay: expect.any(Number) })
+    );
+    expect(mockSock.sendMessage).not.toHaveBeenCalled();
   });
 
   test('saves image message without caption', async () => {
