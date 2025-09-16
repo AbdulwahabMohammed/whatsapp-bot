@@ -92,6 +92,14 @@ async function init () {
     'ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_path TEXT'
   );
 
+  await pool.query(
+    'ALTER TABLE messages ALTER COLUMN text DROP NOT NULL'
+  );
+
+  await pool.query(
+    "ALTER TABLE messages ALTER COLUMN text SET DEFAULT ''"
+  );
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS scheduled_messages (
       id SERIAL PRIMARY KEY,
