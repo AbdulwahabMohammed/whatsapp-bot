@@ -21,12 +21,17 @@ jest.mock('../src/openai', () => ({
 
 const mockQuery = jest
   .fn()
-  .mockResolvedValueOnce({ rows: [{ assistant_id: 'asst-1', vector_store_id: 'old-store' }] })
+  .mockResolvedValueOnce({
+    rows: [{ assistant_id: 'asst-1', vector_store_id: 'old-store', instructions: '' }]
+  })
   .mockResolvedValue({});
 
 jest.mock('../src/db', () => ({ query: mockQuery }));
-jest.mock('../src/logger', () => ({ info: jest.fn(), error: jest.fn() }));
-jest.mock('fs', () => ({ createReadStream: jest.fn() }));
+jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+jest.mock('fs', () => ({
+  createReadStream: jest.fn(),
+  promises: { readFile: jest.fn().mockResolvedValue('not instructions content') }
+}));
 
 describe('uploadFile script', () => {
   const { upload } = require('../src/scripts/uploadFile');

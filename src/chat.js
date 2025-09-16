@@ -1,6 +1,9 @@
 const pool = require('./db');
 const openai = require('./openai');
 const logger = require('./logger');
+const { getAppliedInstructions, matchesSystemInstructions } = require('./utils/systemInstructions');
+
+const SYSTEM_INSTRUCTIONS_FALLBACK_REPLY = 'عذرًا، لا يمكنني مشاركة هذه التعليمات.';
 
 async function checkUsageLimit (orgId) {
   const limit = parseInt(process.env.DAILY_TOKEN_LIMIT || '0', 10);
@@ -89,9 +92,11 @@ async function sendMessage (orgId, assistantId, customerPhone, text) {
     content: text
   });
 
-  const { rows } = await pool.query('SELECT language FROM organizations WHERE id=$1', [orgId]);
-  const orgLang = rows[0]?.language || 'ar';
+  const { rows } = await pool.query('SELECT language, instructions FROM organizations WHERE id=$1', [orgId]);
+  const orgConfig = rows[0] || {};
+  const orgLang = orgConfig.language || 'ar';
   const lang = conv.detected_language || orgLang;
+  const appliedInstructions = getAppliedInstructions(orgConfig.instructions);
 
   const run = await openai.beta.threads.runs.create(threadId, {
     assistant_id: assistantId,
@@ -134,7 +139,13 @@ async function sendMessage (orgId, assistantId, customerPhone, text) {
   }
 
   const messages = await openai.beta.threads.messages.list(threadId, { limit: 1 });
-  const reply = messages.data[0].content[0].text.value;
+  let reply = messages.data[0].content[0].text.value;
+
+  if (matchesSystemInstructions(reply, appliedInstructions)) {
+    logger.warn(`Filtered system instructions from assistant reply for organization ${orgId}`);
+    reply = SYSTEM_INSTRUCTIONS_FALLBACK_REPLY;
+  }
+
   return reply;
 }
 

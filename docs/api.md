@@ -13,6 +13,8 @@ node src/scripts/createAssistant.js <organizationId>
 node src/scripts/uploadFile.js <organizationId> <path/to/file>
 ```
 يرفع ملفًا إلى حساب OpenAI ويُربَط بالمساعد الخاص بالمنشأة.
+في حال كان محتوى الملف مطابقًا لنص التعليمات النظامية للمساعد فسيتم تجاهل الطلب
+وتسجيل تحذير بدلًا من رفعه، لضمان عدم وصول التعليمات نفسها إلى المستخدمين.
 
 ## تهيئة قاعدة البيانات
 ```bash
