@@ -10,7 +10,7 @@
 | `PGDATABASE` | `whatsapp_bot` | اسم قاعدة البيانات المستخدمة |
 | `PGPASSWORD` | `password` | كلمة مرور المستخدم |
 | `PGPORT` | `5432` | منفذ اتصال PostgreSQL |
-| `REDIS_URL` | `redis://localhost:6379` | عنوان خادم Redis المستخدم لطابور الرسائل |
+| `REDIS_URL` | `redis://localhost:6379` | عنوان خادم Redis المستخدم لطابور الرسائل (يجب أن يشير إلى خادم بإصدار 6.2.0 أو أحدث) |
 | `WEBHOOK_URL` | `https://example.com/hook` | مسار اختياري لتلقي بيانات المحادثات |
 | `ADMIN_PASSWORD` | `your-password` | كلمة المرور المطلوبة لدخول واجهة الإدارة |
 | `ADMIN_PORT` | `3001` | المنفذ الذي تعمل عليه لوحة الإدارة |
