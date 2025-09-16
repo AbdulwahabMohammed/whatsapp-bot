@@ -276,17 +276,18 @@ describe('admin routes', () => {
     expect(pool.query).toHaveBeenCalledWith('UPDATE users SET totp_secret=NULL WHERE id=$1', ['1']);
   });
 
-  it('exits if SESSION_SECRET is missing', () => {
+  it('throws if SESSION_SECRET is missing', () => {
     const logger = require('../src/logger');
-    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
     delete process.env.SESSION_SECRET;
     logger.error.mockClear();
-    expect(() => startAdminServer()).toThrow('exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(logger.error).toHaveBeenCalled();
-    exitSpy.mockRestore();
+
+    expect(() => {
+      jest.isolateModules(() => {
+        require('../src/admin');
+      });
+    }).toThrow('SESSION_SECRET environment variable is required');
+
+    expect(logger.error).toHaveBeenCalledWith('SESSION_SECRET environment variable is required');
     process.env.SESSION_SECRET = 'test-secret';
   });
 

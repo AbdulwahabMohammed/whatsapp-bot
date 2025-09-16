@@ -27,9 +27,27 @@ const {
   events: botEvents
 } = require('./botManager');
 
+const sessionSecret = process.env.SESSION_SECRET;
+
+function ensureSessionSecret () {
+  if (!sessionSecret) {
+    const error = new Error('SESSION_SECRET environment variable is required');
+    logger.error(error.message);
+    throw error;
+  }
+  if (sessionSecret === 'secret') {
+    const error = new Error('SESSION_SECRET must not equal "secret"');
+    logger.error(error.message);
+    throw error;
+  }
+}
+
+ensureSessionSecret();
+
 const app = express();
 expressWs(app);
 const wsClients = new Set();
+app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(expressLayouts);
@@ -39,9 +57,14 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'secret',
+    secret: sessionSecret,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    }
   })
 );
 
@@ -615,10 +638,6 @@ app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
 });
 
 function startAdminServer () {
-  if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'secret') {
-    logger.error('SESSION_SECRET must be set and not equal to "secret"');
-    process.exit(1);
-  }
   const port = process.env.ADMIN_PORT || 3001;
   statusInterval = setInterval(broadcastStatus, 5000);
   const server = app.listen(port, () => {
