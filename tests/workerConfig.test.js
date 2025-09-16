@@ -16,6 +16,10 @@ jest.mock('../src/queue', () => ({
 
 jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
+jest.mock('../src/checkEnv', () => ({
+  checkEnv: jest.fn(() => Promise.resolve())
+}));
+
 jest.mock('../src/metrics', () => ({
   connectionGauge: { labels: () => ({ set: jest.fn() }) },
   messageCounter: { labels: () => ({ inc: jest.fn() }) },
@@ -54,6 +58,9 @@ describe('worker configuration', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
+    const env = require('../src/checkEnv');
+    env.checkEnv.mockClear();
+    env.checkEnv.mockResolvedValue();
     delete process.env.FAST_DEV;
     delete process.env.CONNECTION_RETRY_DELAY;
     delete process.env.BULK_MESSAGE_DELAY;
