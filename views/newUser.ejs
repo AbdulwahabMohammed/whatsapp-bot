@@ -1,5 +1,6 @@
 <h1 class="mb-3">Create User</h1>
 <form action="/users/new" method="post" style="max-width:400px;" class="mx-auto">
+  <%- include('partials/csrf') %>
   <div class="mb-3">
     <label class="form-label">Username</label>
     <input class="form-control" type="text" name="username">

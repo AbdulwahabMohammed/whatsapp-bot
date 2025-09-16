@@ -1,5 +1,6 @@
 const request = require('supertest');
 const bcrypt = require('bcrypt');
+const { postWithCsrf, postExpectStatus } = require('./utils/csrf');
 
 jest.mock('../src/index', () => ({
   createOrganization: jest.fn(async (n, p, i, l) => ({ id: 1, name: n, phone: p, instructions: i, language: l })),
@@ -16,6 +17,7 @@ jest.mock('../src/scripts/uploadFile', () => ({
 
 jest.mock('../src/logger', () => ({
   info: jest.fn(),
+  warn: jest.fn(),
   error: jest.fn()
 }));
 
@@ -72,12 +74,25 @@ describe('admin routes', () => {
     qrcode.toDataURL.mockReset();
   });
 
+  async function login (agent, overrides = {}, expectedStatus = 302, options = {}) {
+    const fields = {
+      username: 'admin',
+      password: 'secret',
+      token: '123456',
+      ...overrides
+    };
+    if (typeof expectedStatus === 'number') {
+      return postExpectStatus(agent, '/login', expectedStatus, fields, { tokenPath: '/login', ...options });
+    }
+    return postWithCsrf(agent, '/login', fields, { tokenPath: '/login', ...options });
+  }
+
   it('redirects profile routes when not logged in', async () => {
     const agent = request.agent(app);
     await agent.get('/profile').expect(302);
     await agent.get('/profile/setup-2fa').expect(302);
-    await agent.post('/profile/enable-2fa').expect(302);
-    await agent.post('/profile/disable-2fa').expect(302);
+    await postExpectStatus(agent, '/profile/enable-2fa', 302, {}, { tokenPath: '/login' });
+    await postExpectStatus(agent, '/profile/disable-2fa', 302, {}, { tokenPath: '/login' });
   });
 
   it('logs in without 2FA when totp_secret is null', async () => {
@@ -89,7 +104,7 @@ describe('admin routes', () => {
       return { rows: [] };
     });
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret').expect(302);
+    await login(agent, { token: undefined }, 302);
     const qrcode = require('qrcode');
     expect(qrcode.toDataURL).not.toHaveBeenCalled();
   });
@@ -106,7 +121,7 @@ describe('admin routes', () => {
       return { rows: [] };
     });
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret').expect(302);
+    await login(agent, { token: undefined }, 302);
     const logger = require('../src/logger');
     logger.error.mockClear();
     await agent.get('/profile/setup-2fa').expect(500);
@@ -138,12 +153,12 @@ describe('admin routes', () => {
     });
 
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret');
+    await login(agent, { token: undefined });
     await agent.get('/profile/setup-2fa').expect(200);
-    await agent.post('/profile/enable-2fa').send('token=123456').expect(302);
+    await postExpectStatus(agent, '/profile/enable-2fa', 302, { token: '123456' }, { tokenPath: '/login' });
     expect(secret).toBe('AAAA');
     await agent.get('/profile/setup-2fa').expect(302);
-    await agent.post('/profile/enable-2fa').send('token=111111').expect(302);
+    await postExpectStatus(agent, '/profile/enable-2fa', 302, { token: '111111' }, { tokenPath: '/login' });
     expect(secret).toBe('AAAA');
     const updates = pool.query.mock.calls.filter(c =>
       c[0].startsWith('UPDATE users SET totp_secret=$1')
@@ -151,19 +166,19 @@ describe('admin routes', () => {
     expect(updates.length).toBe(1);
 
     const agent2 = request.agent(app);
-    await agent2.post('/login').send('username=admin&password=secret').expect(401);
+    await login(agent2, { token: undefined }, 401);
 
-    await agent.post('/profile/disable-2fa').expect(302);
+    await postExpectStatus(agent, '/profile/disable-2fa', 302, {}, { tokenPath: '/login' });
     expect(secret).toBe(null);
 
     const agent3 = request.agent(app);
-    await agent3.post('/login').send('username=admin&password=secret').expect(302);
+    await login(agent3, { token: undefined }, 302);
   });
 
   it('creates organization', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
-    await agent.post('/org/new').send('name=Test&phone=123');
+    await login(agent);
+    await postExpectStatus(agent, '/org/new', 302, { name: 'Test', phone: '123' }, { tokenPath: '/org/new' });
     expect(createOrganization).toHaveBeenCalledWith(
       'Test',
       '123',
@@ -176,7 +191,7 @@ describe('admin routes', () => {
 
   it('lists organizations', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/').expect(200);
   });
 
@@ -186,30 +201,33 @@ describe('admin routes', () => {
 
   it('serves stats page', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/stats').expect(200);
   });
 
   it('serves analytics page', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/analytics').expect(200);
   });
 
   it('serves broadcast form', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/broadcast').expect(200);
   });
 
   it('queues broadcast message', async () => {
     const { bulkQueue } = require('../src/queue');
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
-    await agent
-      .post('/broadcast')
-      .send('organization_id=1&phones=1,2&text=hi')
-      .expect(302);
+    await login(agent);
+    await postExpectStatus(
+      agent,
+      '/broadcast',
+      302,
+      { organization_id: '1', phones: '1,2', text: 'hi' },
+      { tokenPath: '/broadcast' }
+    );
     expect(bulkQueue.add).toHaveBeenCalledWith('broadcast', {
       orgId: 1,
       text: 'hi',
@@ -229,7 +247,7 @@ describe('admin routes', () => {
       return { rows: [] };
     });
     const agent = request.agent(app);
-    await agent.post('/login').send('username=user&password=secret&token=123456');
+    await login(agent, { username: 'user' });
     await agent.get('/org/1/assistant').expect(200);
     await agent.get('/org/2/assistant').expect(403);
   });
@@ -246,33 +264,33 @@ describe('admin routes', () => {
       return { rows: [] };
     });
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/org/2/assistant').expect(200);
   });
 
   it('serves unanswered questions page', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/unanswered').expect(200);
   });
 
   it('serves faq suggestions page', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
+    await login(agent);
     await agent.get('/faq').expect(200);
   });
 
   it('deletes faq suggestion', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
-    await agent.post('/faq/1/delete').expect(302);
+    await login(agent);
+    await postExpectStatus(agent, '/faq/1/delete', 302, {}, { tokenPath: '/login' });
     expect(pool.query).toHaveBeenCalledWith('DELETE FROM faq_suggestions WHERE id=$1', ['1']);
   });
 
   it('disables 2FA for user', async () => {
     const agent = request.agent(app);
-    await agent.post('/login').send('username=admin&password=secret&token=123456');
-    await agent.post('/users/1/disable-2fa').expect(302);
+    await login(agent);
+    await postExpectStatus(agent, '/users/1/disable-2fa', 302, {}, { tokenPath: '/login' });
     expect(pool.query).toHaveBeenCalledWith('UPDATE users SET totp_secret=NULL WHERE id=$1', ['1']);
   });
 

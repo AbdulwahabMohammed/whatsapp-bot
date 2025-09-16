@@ -6,11 +6,12 @@ const request = require('supertest');
 const EventEmitter = require('events');
 const bcrypt = require('bcrypt');
 const { initBotsPage } = require('../public/bots');
+const { postExpectStatus } = require('./utils/csrf');
 
 process.env.SESSION_SECRET = 'test-secret';
 process.env.ADMIN_PORT = 0;
 
-jest.mock('../src/logger', () => ({ info: jest.fn(), error: jest.fn() }));
+jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 jest.mock('../src/metrics', () => ({
   client: { register: { contentType: 'text/plain', metrics: jest.fn(async () => '') } },
@@ -101,7 +102,13 @@ afterAll(async () => {
 });
 
 async function login (agent) {
-  await agent.post('/login').send('username=ed&password=secret&token=123456');
+  await postExpectStatus(
+    agent,
+    '/login',
+    302,
+    { username: 'ed', password: 'secret', token: '123456' },
+    { tokenPath: '/login' }
+  );
 }
 
 describe('bot interface permissions', () => {
@@ -116,26 +123,41 @@ describe('bot interface permissions', () => {
 });
 
 describe('bots frontend script', () => {
-  test('shows QR and toggles button based on ws events', () => {
+  test('shows QR and toggles button based on ws events', async () => {
     document.body.innerHTML = `
       <table><tbody><tr data-bot-id="1"><td></td><td></td><td class="status">stopped</td><td><button class="start-stop">Start</button></td></tr></tbody></table>
       <div id="qrModal" style="display:none"><img id="qrImage" /></div>
     `;
-    global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({ status: 'connected' }) }));
+    window.getCsrfToken = jest.fn(() => 'csrf-token');
+    window.updateCsrfToken = jest.fn();
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve({ status: 'connected' }),
+        headers: { get: jest.fn(() => 'next-token') }
+      })
+    );
     let ws;
     function factory () {
       ws = { onmessage: null };
       return ws;
     }
     initBotsPage(factory);
+    const btn = document.querySelector('button.start-stop');
+    btn.click();
+    await Promise.resolve();
     ws.onmessage({ data: JSON.stringify({ botId: 1, status: 'qr', qr: 'data:image/png;base64,abc' }) });
     const img = document.getElementById('qrImage');
     expect(img.src).toBe('data:image/png;base64,abc');
     expect(document.getElementById('qrModal').style.display).toBe('block');
     ws.onmessage({ data: JSON.stringify({ botId: 1, status: 'connected' }) });
-    const btn = document.querySelector('button.start-stop');
     expect(btn.textContent).toBe('Stop');
     ws.onmessage({ data: JSON.stringify({ botId: 1, status: 'stopped' }) });
     expect(btn.textContent).toBe('Start');
+    expect(global.fetch).toHaveBeenCalledWith('/bot/1/start', {
+      headers: { 'CSRF-Token': 'csrf-token' },
+      method: 'POST'
+    });
+    await Promise.resolve();
+    expect(window.updateCsrfToken).toHaveBeenCalledWith('next-token');
   });
 });

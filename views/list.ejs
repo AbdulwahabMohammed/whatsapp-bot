@@ -23,6 +23,7 @@
         <% if (role === 'admin' || role === 'editor') { %>
           <a class="btn btn-sm btn-secondary" href="/org/<%= o.id %>/bots/manage">Bots</a>
           <form action="/org/<%= o.id %>/assistant" method="post" class="d-inline">
+            <%- include('partials/csrf') %>
             <button class="btn btn-sm btn-secondary" type="submit">Create Assistant</button>
           </form>
           <a class="btn btn-sm btn-secondary" href="/org/<%= o.id %>/upload">Upload File</a>

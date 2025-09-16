@@ -1,5 +1,6 @@
 <h1 class="mb-3">Message Results</h1>
 <form action="/messages" method="post" class="mb-3">
+  <%- include('partials/csrf') %>
   <input type="hidden" name="phone" value="<%= phone %>">
   <input type="hidden" name="from" value="<%= from %>">
   <input type="hidden" name="to" value="<%= to %>">
@@ -31,6 +32,7 @@
     <strong><%= s.customer_phone %></strong>: <%= s.summary %>
     <% if (!s.escalated) { %>
       <form action="/conversations/<%= s.id %>/escalate" method="post" class="d-inline">
+        <%- include('partials/csrf') %>
         <button class="btn btn-sm btn-warning" type="submit">تولي المحادثة</button>
       </form>
     <% } else { %>

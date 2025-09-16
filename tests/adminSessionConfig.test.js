@@ -1,5 +1,6 @@
 const request = require('supertest');
 const bcrypt = require('bcrypt');
+const { postWithCsrf } = require('./utils/csrf');
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -16,7 +17,7 @@ describe('admin session configuration', () => {
   function loadAdminModuleWithMocks ({ dbMock } = {}) {
     let adminModule;
     jest.isolateModules(() => {
-      jest.doMock('../src/logger', () => ({ info: jest.fn(), error: jest.fn() }));
+      jest.doMock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
       jest.doMock('../src/metrics', () => ({
         client: { register: { contentType: 'text/plain', metrics: jest.fn(async () => '') } },
         requestCounter: { inc: jest.fn() },
@@ -96,11 +97,16 @@ describe('admin session configuration', () => {
     const { app } = loadAdminModuleWithMocks({ dbMock });
     const agent = request.agent(app);
 
-    const response = await agent
-      .post('/login')
-      .set('X-Forwarded-Proto', 'https')
-      .redirects(0)
-      .send('username=admin&password=secret');
+    const response = await postWithCsrf(
+      agent,
+      '/login',
+      { username: 'admin', password: 'secret' },
+      {
+        tokenPath: '/login',
+        headers: { 'X-Forwarded-Proto': 'https' },
+        redirects: 0
+      }
+    );
 
     const cookies = response.headers['set-cookie'];
     expect(cookies).toBeDefined();

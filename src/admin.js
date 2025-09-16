@@ -2,6 +2,7 @@ const express = require('express');
 const expressWs = require('express-ws');
 const path = require('path');
 const session = require('express-session');
+const csrf = require('csurf');
 const bcrypt = require('bcrypt');
 const {
   client,
@@ -68,8 +69,23 @@ app.use(
   })
 );
 
+const csrfProtection = csrf();
+app.use(csrfProtection);
+
 // expose alert stored in session
 app.use((req, res, next) => {
+  try {
+    if (typeof req.csrfToken === 'function') {
+      const token = req.csrfToken();
+      res.locals.csrfToken = token;
+      res.set('X-CSRF-Token', token);
+    } else {
+      res.locals.csrfToken = '';
+    }
+  } catch (err) {
+    return next(err);
+  }
+
   if (req.session.alert) {
     res.locals.alert = req.session.alert;
     delete req.session.alert;
@@ -635,6 +651,18 @@ app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
   await pool.query('DELETE FROM faq_suggestions WHERE id=$1', [req.params.id]);
   req.session.alert = { type: 'success', message: 'FAQ entry deleted' };
   res.redirect('/faq');
+});
+
+app.use((err, req, res, next) => {
+  if (err && err.code === 'EBADCSRFTOKEN') {
+    logger.warn('Invalid CSRF token detected', { path: req.path, method: req.method });
+    const accept = req.headers.accept || '';
+    if (accept.includes('application/json')) {
+      return res.status(403).json({ error: 'Invalid CSRF token' });
+    }
+    return res.status(403).send('Invalid CSRF token');
+  }
+  next(err);
 });
 
 function startAdminServer () {
