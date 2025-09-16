@@ -2,6 +2,14 @@ let handlers;
 const path = require('path');
 const mockSock = { sendMessage: jest.fn(), ws: { readyState: 'open' } };
 
+const mockRedisInstance = {
+  connect: jest.fn(async () => {}),
+  info: jest.fn(async () => 'redis_version:7.2.0\r\n'),
+  disconnect: jest.fn(() => {})
+};
+
+jest.mock('ioredis', () => jest.fn(() => mockRedisInstance));
+
 jest.mock('bullmq', () => {
   const __handlers = {};
   return {
@@ -41,6 +49,13 @@ jest.mock('../src/openai', () => ({
 describe('worker message flow', () => {
   beforeEach(() => {
     jest.resetModules();
+    const Redis = require('ioredis');
+    Redis.mockClear();
+    mockRedisInstance.connect.mockReset();
+    mockRedisInstance.connect.mockImplementation(async () => {});
+    mockRedisInstance.info.mockReset();
+    mockRedisInstance.info.mockImplementation(async () => 'redis_version:7.2.0\r\n');
+    mockRedisInstance.disconnect.mockReset();
     const bull = require('bullmq');
     Object.keys(bull.__handlers).forEach(k => delete bull.__handlers[k]);
     handlers = bull.__handlers;
@@ -89,7 +104,8 @@ describe('worker message flow', () => {
 
   test('sends reply via WhatsApp', async () => {
     require('../src/chat').sendMessage.mockResolvedValue('reply');
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(require('../src/chat').sendMessage).toHaveBeenCalledWith(1, 'a1', '123', 'hi');
@@ -102,7 +118,8 @@ describe('worker message flow', () => {
     const botManager = require('../src/botManager');
     chat.sendMessage.mockResolvedValue('reply');
     mockSock.ws.readyState = 'closed';
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     const job = {
       id: '1',
@@ -125,7 +142,8 @@ describe('worker message flow', () => {
     const chat = require('../src/chat');
     const db = require('../src/db');
     chat.sendMessage.mockResolvedValue(null);
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     await expect(
       handlers.messages({
@@ -150,7 +168,8 @@ describe('worker message flow', () => {
 
   test('sends attachment if provided', async () => {
     require('../src/chat').sendMessage.mockResolvedValue('file');
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({
       data: {
@@ -173,7 +192,8 @@ describe('worker message flow', () => {
   test('logs error on OpenAI failure', async () => {
     const logger = require('../src/logger');
     require('../src/chat').sendMessage.mockRejectedValue(new Error('fail'));
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi' } });
     expect(mockSock.sendMessage).not.toHaveBeenCalled();
@@ -183,7 +203,8 @@ describe('worker message flow', () => {
   test('posts webhook with message data', async () => {
     require('../src/chat').sendMessage.mockResolvedValue('reply');
     process.env.WEBHOOK_URL = 'http://hook';
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     const ts = 111;
     await handlers.messages({ data: { botId: 1, orgId: 1, assistantId: 'a1', sender: '123', text: 'hi', receivedAt: ts } });
@@ -194,7 +215,8 @@ describe('worker message flow', () => {
 
   test('bulk worker sends to each phone', async () => {
     const db = require('../src/db');
-    require('../src/worker');
+    const workerModule = require('../src/worker');
+    await workerModule.bootstrapPromise;
     await new Promise(resolve => setImmediate(resolve));
     db.query.mockImplementation(async text => {
       if (text.startsWith('SELECT id FROM conversations')) {
