@@ -3,7 +3,15 @@ const path = require('path');
 const { sendMessage } = require('./chat');
 const pool = require('./db');
 const logger = require('./logger');
-const openai = require('./openai');
+
+let openai;
+let openaiInitError;
+try {
+  openai = require('./openai');
+} catch (error) {
+  openaiInitError = error;
+  logger.error('Failed to initialize OpenAI client for worker module:', error);
+}
 const { messageCounter } = require('./metrics');
 const { startScheduler } = require('./scheduler');
 const { getSocket, startBot } = require('./botManager');
@@ -132,6 +140,17 @@ async function getOrCreateConversation (orgId, phone) {
     [orgId, phone]
   );
   if (rows[0]) return rows[0];
+  if (!openai) {
+    logger.error(
+      `OpenAI client unavailable while creating conversation for organization ${orgId} and phone ${phone}.`,
+      openaiInitError
+    );
+    const insert = await pool.query(
+      'INSERT INTO conversations (organization_id, customer_phone, thread_id) VALUES ($1,$2,$3) RETURNING *',
+      [orgId, phone, null]
+    );
+    return insert.rows[0];
+  }
   const thread = await openai.beta.threads.create();
   const insert = await pool.query(
     'INSERT INTO conversations (organization_id, customer_phone, thread_id) VALUES ($1,$2,$3) RETURNING *',
@@ -303,20 +322,27 @@ function startWorkers () {
             if (!convRows[0]?.summary) {
               const { rows: msgs } = await pool.query('SELECT sender, text FROM messages WHERE conversation_id=$1 ORDER BY id', [conversationId]);
               const convoText = msgs.map(m => `${m.sender}: ${m.text}`).join('\n');
-              try {
-                const resp = await openai.chat.completions.create({
-                  model: 'gpt-3.5-turbo',
-                  messages: [
-                    { role: 'system', content: 'Summarize the following conversation briefly.' },
-                    { role: 'user', content: convoText }
-                  ]
-                });
-                const summary = resp.choices?.[0]?.message?.content?.trim();
-                if (summary) {
-                  await pool.query('UPDATE conversations SET summary=$1 WHERE id=$2', [summary, conversationId]);
+              if (!openai) {
+                logger.error(
+                  `Skipping conversation summary for conversation ${conversationId} because OpenAI client is unavailable.`,
+                  openaiInitError
+                );
+              } else {
+                try {
+                  const resp = await openai.chat.completions.create({
+                    model: 'gpt-3.5-turbo',
+                    messages: [
+                      { role: 'system', content: 'Summarize the following conversation briefly.' },
+                      { role: 'user', content: convoText }
+                    ]
+                  });
+                  const summary = resp.choices?.[0]?.message?.content?.trim();
+                  if (summary) {
+                    await pool.query('UPDATE conversations SET summary=$1 WHERE id=$2', [summary, conversationId]);
+                  }
+                } catch (err) {
+                  logger.error('Failed to generate summary:', err);
                 }
-              } catch (err) {
-                logger.error('Failed to generate summary:', err);
               }
             }
           }
@@ -412,10 +438,23 @@ function startWorkers () {
           );
           let conversationId = rows[0]?.id;
           if (!conversationId) {
-            const thread = await openai.beta.threads.create();
+            let threadId = null;
+            if (!openai) {
+              logger.error(
+                `OpenAI client unavailable while preparing bulk conversation for organization ${orgId}.`,
+                openaiInitError
+              );
+            } else {
+              try {
+                const thread = await openai.beta.threads.create();
+                threadId = thread.id;
+              } catch (err) {
+                logger.error('Failed to create OpenAI thread for bulk message:', err);
+              }
+            }
             const insert = await pool.query(
               'INSERT INTO conversations (organization_id, customer_phone, thread_id) VALUES ($1,$2,$3) RETURNING id',
-              [orgId, phone, thread.id]
+              [orgId, phone, threadId]
             );
             conversationId = insert.rows[0].id;
           }
