@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const mime = require('mime-types');
 const logger = require('../logger');
 
 let openai;
@@ -25,11 +26,91 @@ function ensureOpenAIClient () {
   throw new Error(`OpenAI client is not configured: ${baseError.message}`, { cause: baseError });
 }
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+const ALLOWED_FILE_TYPES = {
+  '.txt': ['text/plain'],
+  '.md': ['text/markdown', 'text/plain'],
+  '.markdown': ['text/markdown', 'text/plain'],
+  '.pdf': ['application/pdf'],
+  '.csv': ['text/csv', 'application/vnd.ms-excel'],
+  '.json': ['application/json'],
+  '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+};
+
+function formatFileSize (bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatAllowedFileTypes () {
+  return Object.entries(ALLOWED_FILE_TYPES)
+    .map(([ext, mimes]) => `${ext} (${mimes.join(', ')})`)
+    .join(', ');
+}
+
+function createValidationError (message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  error.name = 'UploadValidationError';
+  return error;
+}
+
+async function validateFilePath (inputPath) {
+  const resolvedPath = path.resolve(inputPath);
+  let stats;
+  try {
+    stats = await fs.promises.stat(resolvedPath);
+  } catch (err) {
+    if (err && err.code === 'ENOENT') {
+      throw createValidationError(`File not found at path: ${resolvedPath}`);
+    }
+    throw createValidationError(`Unable to access file: ${resolvedPath}`);
+  }
+
+  if (typeof stats.isFile !== 'function' || !stats.isFile()) {
+    throw createValidationError(`The provided path is not a file: ${resolvedPath}`);
+  }
+
+  if (stats.size > MAX_FILE_SIZE_BYTES) {
+    throw createValidationError(
+      `File size ${formatFileSize(stats.size)} exceeds the maximum allowed ${formatFileSize(MAX_FILE_SIZE_BYTES)}.`
+    );
+  }
+
+  const extension = path.extname(resolvedPath).toLowerCase();
+  const allowedMimes = ALLOWED_FILE_TYPES[extension];
+  if (!allowedMimes) {
+    throw createValidationError(
+      `Unsupported file extension "${extension || 'unknown'}". Allowed types: ${formatAllowedFileTypes()}.`
+    );
+  }
+
+  const detectedMime = mime.lookup(resolvedPath);
+  if (!detectedMime) {
+    throw createValidationError(
+      `Unable to determine MIME type for ${path.basename(resolvedPath)}. Supported types: ${formatAllowedFileTypes()}.`
+    );
+  }
+
+  if (!allowedMimes.includes(detectedMime)) {
+    throw createValidationError(
+      `Detected MIME type "${detectedMime}" is not allowed for extension ${extension}. Supported types: ${allowedMimes.join(
+        ', '
+      )}.`
+    );
+  }
+
+  return resolvedPath;
+}
+
 async function upload (orgId, filePath) {
   if (!orgId || !filePath) {
     throw new Error('Usage: node src/scripts/uploadFile.js <organizationId> <filePath>');
   }
 
+  const normalizedPath = await validateFilePath(filePath);
   const client = ensureOpenAIClient();
 
   const orgRes = await pool.query(
@@ -50,20 +131,20 @@ async function upload (orgId, filePath) {
   const appliedInstructions = getAppliedInstructions(org.instructions);
   let fileContents = '';
   try {
-    fileContents = await fs.promises.readFile(filePath, 'utf8');
+    fileContents = await fs.promises.readFile(normalizedPath, 'utf8');
   } catch (err) {
-    logger.warn(`Failed to read file for inspection before upload: ${filePath}`, err);
+    logger.warn(`Failed to read file for inspection before upload: ${normalizedPath}`, err);
   }
 
   if (matchesSystemInstructions(fileContents, appliedInstructions)) {
     logger.warn(
-      `Skipping upload for ${filePath} because it matches system instructions for organization ${orgId}`
+      `Skipping upload for ${normalizedPath} because it matches system instructions for organization ${orgId}`
     );
     return { skipped: true, reason: SYSTEM_INSTRUCTIONS_FILTER_REASON };
   }
 
   const file = await client.files.create({
-    file: fs.createReadStream(filePath),
+    file: fs.createReadStream(normalizedPath),
     purpose: 'assistants'
   });
 
@@ -115,7 +196,7 @@ async function upload (orgId, filePath) {
 
   await pool.query(
     'INSERT INTO documents (organization_id, file_id, file_name) VALUES ($1, $2, $3)',
-    [orgId, file.id, path.basename(filePath)]
+    [orgId, file.id, path.basename(normalizedPath)]
   );
 
   logger.info(`File uploaded and attached: ${file.id}`);
@@ -134,4 +215,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = { upload };
+module.exports = {
+  upload,
+  ALLOWED_FILE_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  validateFilePath,
+  formatAllowedFileTypes,
+  formatFileSize
+};

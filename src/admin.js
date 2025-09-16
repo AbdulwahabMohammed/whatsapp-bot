@@ -12,7 +12,12 @@ const {
 } = require('./metrics');
 const { messageQueue, bulkQueue, getQueueLength } = require('./queue');
 const { createAssistant } = require('./assistant');
-const { upload } = require('./scripts/uploadFile');
+const {
+  upload,
+  formatAllowedFileTypes,
+  formatFileSize,
+  MAX_FILE_SIZE_BYTES
+} = require('./scripts/uploadFile');
 const { createOrganization, listOrganizations } = require('./index');
 const logger = require('./logger');
 const pool = require('./db');
@@ -359,18 +364,52 @@ app.get('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) 
   res.render('createAssistant', { orgId: req.params.id, instructions });
 });
 
+function wantsJson (req) {
+  const accept = req.headers.accept || '';
+  return accept.includes('application/json');
+}
+
 app.get('/org/:id/upload', requireEditor, requireOrgAccess, (req, res) => {
-  res.render('upload', { orgId: req.params.id });
+  res.render('upload', {
+    orgId: req.params.id,
+    error: null,
+    allowedFileTypes: formatAllowedFileTypes(),
+    maxFileSize: formatFileSize(MAX_FILE_SIZE_BYTES)
+  });
 });
 
 app.post('/org/:id/upload', requireEditor, requireOrgAccess, async (req, res) => {
   const { filePath } = req.body;
-  await upload(req.params.id, filePath);
-  if (req.headers.accept === 'application/json') {
-    return res.json({ ok: true, message: 'File uploaded' });
+  try {
+    const result = await upload(req.params.id, filePath);
+    const message = result?.skipped
+      ? `File skipped: ${result.reason}`
+      : 'File uploaded';
+
+    if (wantsJson(req)) {
+      return res.json({ ok: true, message });
+    }
+
+    req.session.alert = { type: 'success', message };
+    res.redirect('/');
+  } catch (error) {
+    const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    const message = error?.message || 'Failed to upload file';
+    const logMethod = statusCode >= 500 ? logger.error : logger.warn;
+    logMethod.call(logger, `Upload failed for organization ${req.params.id}: ${message}`, error);
+
+    if (wantsJson(req)) {
+      return res.status(statusCode).json({ ok: false, message });
+    }
+
+    res.status(statusCode);
+    return res.render('upload', {
+      orgId: req.params.id,
+      error: message,
+      allowedFileTypes: formatAllowedFileTypes(),
+      maxFileSize: formatFileSize(MAX_FILE_SIZE_BYTES)
+    });
   }
-  req.session.alert = { type: 'success', message: 'File uploaded' };
-  res.redirect('/');
 });
 
 app.get('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {

@@ -133,7 +133,10 @@ jest.mock('fs', () => {
   const { DEFAULT_SYSTEM_INSTRUCTIONS } = require('../src/utils/systemInstructions');
   return {
     createReadStream: jest.fn(),
-    promises: { readFile: jest.fn(async () => DEFAULT_SYSTEM_INSTRUCTIONS) }
+    promises: {
+      readFile: jest.fn(async () => DEFAULT_SYSTEM_INSTRUCTIONS),
+      stat: jest.fn(async () => ({ isFile: () => true, size: 1024 }))
+    }
   };
 });
 

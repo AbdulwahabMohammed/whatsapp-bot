@@ -28,13 +28,22 @@ const mockQuery = jest
 
 jest.mock('../src/db', () => ({ query: mockQuery }));
 jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
-jest.mock('fs', () => ({
-  createReadStream: jest.fn(),
-  promises: { readFile: jest.fn().mockResolvedValue('not instructions content') }
-}));
+jest.mock('fs', () => {
+  const readFile = jest.fn().mockResolvedValue('not instructions content');
+  const stat = jest.fn().mockResolvedValue({ isFile: () => true, size: 1024 });
+  return {
+    createReadStream: jest.fn(),
+    promises: { readFile, stat }
+  };
+});
 
 describe('uploadFile script', () => {
-  const { upload } = require('../src/scripts/uploadFile');
+  const { upload, MAX_FILE_SIZE_BYTES } = require('../src/scripts/uploadFile');
+  const fs = require('fs');
+
+  beforeEach(() => {
+    fs.promises.stat.mockResolvedValue({ isFile: () => true, size: 1024 });
+  });
 
   test('creates new vector store when retrieval returns 404', async () => {
     await upload(1, '/fake/path.txt');
@@ -48,5 +57,14 @@ describe('uploadFile script', () => {
     expect(mockVectorStoreApi.fileBatches.createAndPoll).toHaveBeenCalledWith('new-store', {
       file_ids: ['file-1']
     });
+  });
+
+  test('rejects unsupported file extensions', async () => {
+    await expect(upload(1, '/fake/path.exe')).rejects.toThrow('Unsupported file extension');
+  });
+
+  test('rejects files that exceed the size limit', async () => {
+    fs.promises.stat.mockResolvedValueOnce({ isFile: () => true, size: MAX_FILE_SIZE_BYTES + 1 });
+    await expect(upload(1, '/fake/path.txt')).rejects.toThrow('exceeds the maximum allowed');
   });
 });
