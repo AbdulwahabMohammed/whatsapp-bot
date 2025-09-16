@@ -41,6 +41,17 @@ describe('admin session configuration', () => {
         getBotStatus: jest.fn(() => 'stopped'),
         events: { on: jest.fn() }
       }));
+      jest.doMock(
+        'csurf',
+        () =>
+          jest.fn(
+            () => (req, res, next) => {
+              req.csrfToken = () => 'test-csrf-token';
+              next();
+            }
+          ),
+        { virtual: true }
+      );
       jest.doMock('speakeasy', () => ({
         totp: { verify: jest.fn(() => true) },
         generateSecret: jest.fn(() => ({ base32: 'AAAA', otpauth_url: 'otpauth://' }))

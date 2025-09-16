@@ -2,6 +2,18 @@ const request = require('supertest');
 const bcrypt = require('bcrypt');
 const { postWithCsrf, postExpectStatus } = require('./utils/csrf');
 
+jest.mock(
+  'csurf',
+  () =>
+    jest.fn(
+      () => (req, res, next) => {
+        req.csrfToken = () => 'test-csrf-token';
+        next();
+      }
+    ),
+  { virtual: true }
+);
+
 jest.mock('../src/index', () => ({
   createOrganization: jest.fn(async (n, p, i, l) => ({ id: 1, name: n, phone: p, instructions: i, language: l })),
   listOrganizations: jest.fn(async () => ([]))

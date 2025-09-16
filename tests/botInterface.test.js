@@ -11,6 +11,18 @@ const { postExpectStatus } = require('./utils/csrf');
 process.env.SESSION_SECRET = 'test-secret';
 process.env.ADMIN_PORT = 0;
 
+jest.mock(
+  'csurf',
+  () =>
+    jest.fn(
+      () => (req, res, next) => {
+        req.csrfToken = () => 'test-csrf-token';
+        next();
+      }
+    ),
+  { virtual: true }
+);
+
 jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 jest.mock('../src/metrics', () => ({
@@ -34,6 +46,10 @@ jest.mock('speakeasy', () => ({
 jest.mock('qrcode', () => ({ toDataURL: jest.fn() }));
 jest.mock('../src/assistant', () => ({ createAssistant: jest.fn() }));
 jest.mock('../src/scripts/uploadFile', () => ({ upload: jest.fn() }));
+jest.mock('../src/index', () => ({
+  createOrganization: jest.fn(),
+  listOrganizations: jest.fn(async () => [])
+}));
 
 const mockEvents = new EventEmitter();
 let mockStatus = 'stopped';

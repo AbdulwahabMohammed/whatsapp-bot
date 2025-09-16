@@ -1,5 +1,16 @@
-const pool = require('./db');
 const logger = require('./logger');
+const { checkEnv } = require('./checkEnv');
+
+const envCheckPromise = checkEnv();
+let pool;
+
+function getPool () {
+  if (!pool) {
+    // Lazy-load the database connection so the environment check can fail gracefully first.
+    pool = require('./db');
+  }
+  return pool;
+}
 
 /**
  * Create an organization entry in the database.
@@ -12,7 +23,9 @@ async function createOrganization (
   workingHoursStart,
   workingHoursEnd
 ) {
-  const { rows } = await pool.query(
+  await envCheckPromise;
+  const db = getPool();
+  const { rows } = await db.query(
     'INSERT INTO organizations (name, phone, instructions, language, working_hours_start, working_hours_end) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
     [name, phone, instructions, language, workingHoursStart, workingHoursEnd]
   );
@@ -20,7 +33,9 @@ async function createOrganization (
 }
 
 async function listOrganizations () {
-  const { rows } = await pool.query('SELECT * FROM organizations');
+  await envCheckPromise;
+  const db = getPool();
+  const { rows } = await db.query('SELECT * FROM organizations');
   return rows;
 }
 
@@ -33,6 +48,14 @@ async function main () {
 }
 
 async function start () {
+  try {
+    await envCheckPromise;
+  } catch (error) {
+    logger.error(`Environment validation failed: ${error.message}`, { stack: error.stack });
+    process.exit(1);
+    return;
+  }
+
   try {
     await main();
   } catch (err) {

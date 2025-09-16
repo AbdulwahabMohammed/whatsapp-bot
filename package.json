@@ -9,6 +9,7 @@
     "create-assistant": "node src/scripts/createAssistant.js",
     "upload-file": "node src/scripts/uploadFile.js",
     "generate-faq": "node src/scripts/generateFaq.js",
+    "check-env": "node src/checkEnv.js",
     "worker": "node src/worker.js",
     "lint": "eslint \"src/**\" \"tests/**\""
   },
