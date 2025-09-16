@@ -1,5 +1,6 @@
 <h1 class="mb-3">Broadcast Message</h1>
 <form action="/broadcast" method="post">
+  <%- include('partials/csrf') %>
   <div class="mb-3">
     <label class="form-label">Organization</label>
     <select class="form-select" name="organization_id">

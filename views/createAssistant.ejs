@@ -1,5 +1,6 @@
 <h1 class="mb-3">Create Assistant for Organization <%= orgId %></h1>
 <form action="/org/<%= orgId %>/assistant" method="post">
+  <%- include('partials/csrf') %>
   <div class="mb-3">
     <label class="form-label">Instructions</label>
     <textarea class="form-control" name="instructions" rows="5"><%= instructions %></textarea>

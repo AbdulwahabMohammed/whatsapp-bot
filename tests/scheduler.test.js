@@ -2,7 +2,7 @@ const { dispatchScheduled } = require('../src/scheduler');
 
 jest.mock('../src/queue', () => ({ messageQueue: { add: jest.fn() } }));
 jest.mock('../src/db', () => ({ query: jest.fn() }));
-jest.mock('../src/logger', () => ({ info: jest.fn(), error: jest.fn() }));
+jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 const pool = require('../src/db');
 const { messageQueue } = require('../src/queue');

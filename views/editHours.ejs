@@ -1,5 +1,6 @@
 <h1 class="mb-3">Edit Working Hours for <%= name %></h1>
 <form action="/org/<%= orgId %>/hours" method="post" style="max-width:400px;">
+  <%- include('partials/csrf') %>
   <div class="mb-3">
     <label class="form-label">Start</label>
     <input class="form-control" type="time" name="working_hours_start" value="<%= start %>">

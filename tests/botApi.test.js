@@ -2,11 +2,12 @@ const request = require('supertest');
 const WebSocket = require('ws');
 const EventEmitter = require('events');
 const bcrypt = require('bcrypt');
+const { postWithCsrf, postExpectStatus } = require('./utils/csrf');
 
 process.env.SESSION_SECRET = 'test-secret';
 process.env.ADMIN_PORT = 0;
 
-jest.mock('../src/logger', () => ({ info: jest.fn(), error: jest.fn() }));
+jest.mock('../src/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 jest.mock('../src/metrics', () => ({
   client: { register: { contentType: 'text/plain', metrics: jest.fn(async () => '') } },
@@ -101,17 +102,25 @@ beforeEach(() => {
 });
 
 async function login (agent) {
-  await agent.post('/login').send('username=ed&password=secret&token=123456');
+  await postExpectStatus(
+    agent,
+    '/login',
+    302,
+    { username: 'ed', password: 'secret', token: '123456' },
+    { tokenPath: '/login' }
+  );
 }
 
 describe('bot API', () => {
   test('creates bot linked to organization', async () => {
     const agent = request.agent(app);
     await login(agent);
-    const res = await agent
-      .post('/org/1/bots')
-      .set('Accept', 'application/json')
-      .send('assistant_id=a1&name=Bot1');
+    const res = await postWithCsrf(
+      agent,
+      '/org/1/bots',
+      { assistant_id: 'a1', name: 'Bot1' },
+      { tokenPath: '/org/1/bots/new', accept: 'application/json' }
+    );
     expect(res.status).toBe(200);
     expect(res.body.assistant_id).toBe('a1');
     const list = await agent.get('/org/1/bots');
@@ -122,25 +131,39 @@ describe('bot API', () => {
   test('start and stop bot via API', async () => {
     const agent = request.agent(app);
     await login(agent);
-    await agent
-      .post('/org/1/bots')
-      .set('Accept', 'application/json')
-      .send('assistant_id=a1');
-    let res = await agent.post('/bot/1/start');
+    await postWithCsrf(
+      agent,
+      '/org/1/bots',
+      { assistant_id: 'a1' },
+      { tokenPath: '/org/1/bots/new', accept: 'application/json' }
+    );
+    let res = await postWithCsrf(
+      agent,
+      '/bot/1/start',
+      {},
+      { tokenPath: '/login', accept: 'application/json' }
+    );
     expect(res.body.status).toBe('started');
     res = await agent.get('/bot/1/status');
     expect(res.body.status).toBe('started');
-    res = await agent.post('/bot/1/stop');
+    res = await postWithCsrf(
+      agent,
+      '/bot/1/stop',
+      {},
+      { tokenPath: '/login', accept: 'application/json' }
+    );
     expect(res.body.status).toBe('stopped');
   });
 
   test('broadcasts qr over websocket', async () => {
     const agent = request.agent(app);
     await login(agent);
-    await agent
-      .post('/org/1/bots')
-      .set('Accept', 'application/json')
-      .send('assistant_id=a1');
+    await postWithCsrf(
+      agent,
+      '/org/1/bots',
+      { assistant_id: 'a1' },
+      { tokenPath: '/org/1/bots/new', accept: 'application/json' }
+    );
     const port = serverInfo.server.address().port;
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
     await new Promise(resolve => ws.on('open', resolve));
@@ -150,7 +173,12 @@ describe('bot API', () => {
         if (obj.qr) resolve(obj);
       });
     });
-    await agent.post('/bot/1/start');
+    await postWithCsrf(
+      agent,
+      '/bot/1/start',
+      {},
+      { tokenPath: '/login', accept: 'application/json' }
+    );
     mockEvents.emit('update', { botId: 1, status: 'qr', qr: '123' });
     const msg = await msgPromise;
     expect(msg).toEqual({ botId: 1, status: 'qr', qr: '123' });

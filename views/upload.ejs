@@ -1,6 +1,7 @@
 <h1 class="mb-3">Upload Reference File for Organization <%= orgId %></h1>
 <div id="uploadAlert"></div>
 <form id="uploadForm" action="/org/<%= orgId %>/upload" method="post" style="max-width:400px;" class="mb-3">
+  <%- include('partials/csrf') %>
   <div class="mb-3">
     <label class="form-label">Path</label>
     <input class="form-control" type="text" name="filePath">
@@ -29,11 +30,20 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   const container = document.getElementById('uploadAlert');
   container.innerHTML = '';
   try {
+    const headers = { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' };
+    if (typeof window !== 'undefined' && typeof window.getCsrfToken === 'function') {
+      const token = window.getCsrfToken();
+      if (token) headers['CSRF-Token'] = token;
+    }
     const res = await fetch(form.action, {
       method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers,
       body: data
     });
+    if (typeof window !== 'undefined' && typeof window.updateCsrfToken === 'function') {
+      const refreshed = res.headers.get('x-csrf-token');
+      if (refreshed) window.updateCsrfToken(refreshed);
+    }
     if (!res.ok) {
       const text = await res.text();
       let message = 'Upload failed';

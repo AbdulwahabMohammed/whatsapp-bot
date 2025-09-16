@@ -2,6 +2,7 @@
 <p>امسح الرمز أدناه باستخدام تطبيق Google Authenticator ثم أدخل الرمز الحالي.</p>
 <img src="<%= qr %>" alt="QR Code" class="mb-3">
 <form action="/profile/enable-2fa" method="post" style="max-width:300px;">
+  <%- include('partials/csrf') %>
   <div class="mb-3">
     <input class="form-control" type="text" name="token" placeholder="رمز التحقق">
   </div>

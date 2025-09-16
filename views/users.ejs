@@ -15,6 +15,7 @@
       <td><%= u.username %></td>
       <td colspan="2">
         <form action="/users/<%= u.id %>/role" method="post" class="d-flex align-items-center">
+          <%- include('partials/csrf') %>
           <select class="form-select form-select-sm me-2" name="role">
             <option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>admin</option>
             <option value="editor" <%= u.role === 'editor' ? 'selected' : '' %>>editor</option>
@@ -30,6 +31,7 @@
       </td>
       <td>
         <form action="/users/<%= u.id %>/disable-2fa" method="post" class="d-inline" data-confirm="Disable 2FA for this user?">
+          <%- include('partials/csrf') %>
           <button class="btn btn-sm btn-warning" type="submit">Disable 2FA</button>
         </form>
       </td>
