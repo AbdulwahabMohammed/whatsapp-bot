@@ -30,7 +30,12 @@ describe('admin session configuration', () => {
         getQueueLength: jest.fn(async () => 0)
       }));
       jest.doMock('../src/assistant', () => ({ createAssistant: jest.fn() }));
-      jest.doMock('../src/scripts/uploadFile', () => ({ upload: jest.fn() }));
+      jest.doMock('../src/scripts/uploadFile', () => ({
+        upload: jest.fn(),
+        formatAllowedFileTypes: jest.fn(() => '.txt (text/plain)'),
+        formatFileSize: jest.fn(() => '10.00 MB'),
+        MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024
+      }));
       jest.doMock('../src/index', () => ({
         createOrganization: jest.fn(),
         listOrganizations: jest.fn(async () => [])
