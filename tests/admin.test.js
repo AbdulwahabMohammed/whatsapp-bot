@@ -309,34 +309,24 @@ describe('admin routes', () => {
     process.env.SESSION_SECRET = 'test-secret';
   });
 
-  it('exits if OPENAI_API_KEY is missing', () => {
+  it('throws if OPENAI_API_KEY is missing', () => {
     jest.resetModules();
     const logger = require('../src/logger');
-    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
     delete process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = ''; // Prevent dotenv from restoring the value
     logger.error.mockClear();
-    expect(() => require('../src/openai')).toThrow('exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(logger.error).toHaveBeenCalled();
-    exitSpy.mockRestore();
-    process.env.OPENAI_API_KEY = 'sk-test-valid-key';
+    expect(() => require('../src/openai')).toThrow('OPENAI_API_KEY is missing or invalid');
+    expect(logger.error).toHaveBeenCalledWith('OPENAI_API_KEY is missing or invalid');
+    process.env.OPENAI_API_KEY = 'sk-test-valid-key-1'.padEnd(44, 'x');
   });
 
-  it('exits if OPENAI_API_KEY is invalid', () => {
+  it('throws if OPENAI_API_KEY is invalid', () => {
     jest.resetModules();
     const logger = require('../src/logger');
-    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
     process.env.OPENAI_API_KEY = 'invalid-key';
     logger.error.mockClear();
-    expect(() => require('../src/openai')).toThrow('exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(logger.error).toHaveBeenCalled();
-    exitSpy.mockRestore();
-    process.env.OPENAI_API_KEY = 'sk-test-valid-key';
+    expect(() => require('../src/openai')).toThrow('OPENAI_API_KEY is missing or invalid');
+    expect(logger.error).toHaveBeenCalledWith('OPENAI_API_KEY is missing or invalid');
+    process.env.OPENAI_API_KEY = 'sk-test-valid-key-1'.padEnd(44, 'x');
   });
 });

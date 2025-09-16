@@ -1,6 +1,14 @@
-const pool = require('./db');
-const openai = require('./openai');
 const logger = require('./logger');
+const pool = require('./db');
+
+let openai;
+let openaiInitError;
+try {
+  openai = require('./openai');
+} catch (error) {
+  openaiInitError = error;
+  logger.error('Failed to initialize OpenAI client for chat module:', error);
+}
 const { getAppliedInstructions, matchesSystemInstructions } = require('./utils/systemInstructions');
 
 const SYSTEM_INSTRUCTIONS_FALLBACK_REPLY = 'عذرًا، لا يمكنني مشاركة هذه التعليمات.';
@@ -22,6 +30,10 @@ async function checkUsageLimit (orgId) {
 // expects the run ID as the first argument and an object containing the
 // `thread_id` as the second argument. Older versions used the opposite order.
 async function retrieveRun (threadId, runId) {
+  if (!openai) {
+    const error = openaiInitError || new Error('OpenAI client is not initialized');
+    throw error;
+  }
   if (!threadId) {
     throw new Error('threadId is required to retrieve a run');
   }
@@ -51,6 +63,10 @@ async function getOrCreateConversation (orgId, customerPhone) {
 async function sendMessage (orgId, assistantId, customerPhone, text) {
   if (!text || !String(text).trim()) {
     logger.warn('Empty text provided to sendMessage, skipping OpenAI call');
+    return null;
+  }
+  if (!openai) {
+    logger.error('OpenAI client not initialized; unable to send chat message.', openaiInitError);
     return null;
   }
   const conv = await getOrCreateConversation(orgId, customerPhone);

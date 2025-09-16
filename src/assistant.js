@@ -1,18 +1,35 @@
 const fs = require('fs');
 const path = require('path');
-const openai = require('./openai');
-const pool = require('./db');
 const logger = require('./logger');
+
+let openai;
+let openaiInitError;
+try {
+  openai = require('./openai');
+} catch (error) {
+  openaiInitError = error;
+  logger.error('Failed to initialize OpenAI client for assistant module:', error);
+}
+const pool = require('./db');
 const {
   SYSTEM_INSTRUCTIONS_FILTER_REASON,
   getAppliedInstructions,
   matchesSystemInstructions
 } = require('./utils/systemInstructions');
 
+function ensureOpenAIClient () {
+  if (openai) {
+    return openai;
+  }
+  const baseError = openaiInitError || new Error('OpenAI client is not initialized');
+  throw new Error(`OpenAI client is not configured: ${baseError.message}`, { cause: baseError });
+}
+
 /**
  * Create an assistant for an organization.
  */
 async function createAssistant (organizationId) {
+  const client = ensureOpenAIClient();
   const orgRes = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [organizationId]);
   const botRes = await pool.query('SELECT * FROM bots WHERE organization_id=$1', [organizationId]);
   const org = orgRes.rows[0] || {};
@@ -22,14 +39,14 @@ async function createAssistant (organizationId) {
     'رد فقط باستخدام البيانات المقدمة من الملفات المرجعية الخاصة بالمنشأة.';
 
   if (bot?.assistant_id) {
-    const assistant = await openai.beta.assistants.update(bot.assistant_id, {
+    const assistant = await client.beta.assistants.update(bot.assistant_id, {
       instructions
     });
     logger.info(`Assistant updated: ${assistant.id}`);
     return assistant;
   }
 
-  const assistant = await openai.beta.assistants.create({
+  const assistant = await client.beta.assistants.create({
     name: `Org-${organizationId}-Assistant`,
     instructions,
     // Use file_search tool to allow the assistant to access uploaded reference
@@ -58,6 +75,7 @@ async function createAssistant (organizationId) {
  * Upload a file and attach it to the organization assistant.
  */
 async function uploadFile (organizationId, filePath) {
+  const client = ensureOpenAIClient();
   const orgRes = await pool.query(
     `SELECT b.assistant_id, o.vector_store_id, o.instructions
      FROM organizations o
@@ -88,17 +106,17 @@ async function uploadFile (organizationId, filePath) {
     return { skipped: true, reason: SYSTEM_INSTRUCTIONS_FILTER_REASON };
   }
 
-  const file = await openai.files.create({
+  const file = await client.files.create({
     file: fs.createReadStream(filePath),
     purpose: 'assistants'
   });
 
   // Determine which vector store API is available in this SDK version.
   const vectorStoresApi =
-    openai.beta?.vectorStores ||
-    openai.beta?.vector_stores ||
-    openai.vectorStores ||
-    openai.vector_stores;
+    client.beta?.vectorStores ||
+    client.beta?.vector_stores ||
+    client.vectorStores ||
+    client.vector_stores;
   if (!vectorStoresApi) {
     throw new Error(
       'This OpenAI SDK does not expose the vector store API. Please upgrade to a recent version.'
@@ -107,7 +125,7 @@ async function uploadFile (organizationId, filePath) {
 
   // Determine the vector store for this organization.
   let vectorStoreId = org.vector_store_id;
-  const assistant = await openai.beta.assistants.retrieve(org.assistant_id);
+  const assistant = await client.beta.assistants.retrieve(org.assistant_id);
   const attachedStores = assistant.tool_resources?.file_search?.vector_store_ids || [];
 
   // Verify the vector store exists; recreate if missing
@@ -132,7 +150,7 @@ async function uploadFile (organizationId, filePath) {
   }
 
   if (!attachedStores.includes(vectorStoreId)) {
-    await openai.beta.assistants.update(org.assistant_id, {
+    await client.beta.assistants.update(org.assistant_id, {
       tool_resources: { file_search: { vector_store_ids: [...attachedStores, vectorStoreId] } }
     });
   }

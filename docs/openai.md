@@ -16,8 +16,19 @@ try {
   ({ OpenAI } = require('openai'));
 }
 
+const dotenv = require('dotenv');
+const logger = require('./logger');
+
+dotenv.config();
+
+const key = process.env.OPENAI_API_KEY;
+if (!key || !key.startsWith('sk-') || key.length < 40) {
+  logger.error('OPENAI_API_KEY is missing or invalid');
+  throw new Error('OPENAI_API_KEY is missing or invalid');
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: key,
 });
 ```
 
@@ -34,6 +45,10 @@ const openai = new OpenAI({
 
 ## القيود والمتطلبات
 
+- عند غياب المتغير `OPENAI_API_KEY` أو تمرير قيمة لا تبدأ بـ`sk-` أو يقل طولها عن 40
+  حرفًا، سيُسجِّل التطبيق رسالة خطأ ثم يرمي استثناء أثناء التهيئة. تتعامل الوحدات التي
+  تستورد العميل (`chat`، `assistant`، `worker`، وأدوات CLI) مع هذا الاستثناء عبر تسجيل
+  الرسالة وتعطيل أي عمليات تعتمد على OpenAI حتى يتم توفير مفتاح صحيح.
 - يحتاج البوت إلى توفر واجهة متاجر المتجهات في مكتبة OpenAI. سيظهر الخطأ التالي
   إذا كان الإصدار المستخدم يفتقدها:
   `This OpenAI SDK does not expose the vector store API. Please upgrade to a recent version.`
