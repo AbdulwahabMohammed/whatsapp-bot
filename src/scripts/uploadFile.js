@@ -3,6 +3,11 @@ const path = require('path');
 const openai = require('../openai');
 const pool = require('../db');
 const logger = require('../logger');
+const {
+  SYSTEM_INSTRUCTIONS_FILTER_REASON,
+  getAppliedInstructions,
+  matchesSystemInstructions
+} = require('../utils/systemInstructions');
 
 async function upload (orgId, filePath) {
   if (!orgId || !filePath) {
@@ -10,7 +15,7 @@ async function upload (orgId, filePath) {
   }
 
   const orgRes = await pool.query(
-    `SELECT b.assistant_id, o.vector_store_id
+    `SELECT b.assistant_id, o.vector_store_id, o.instructions
      FROM organizations o
      JOIN bots b ON b.organization_id = o.id
      WHERE o.id=$1`,
@@ -22,6 +27,21 @@ async function upload (orgId, filePath) {
   }
   if (!org.assistant_id) {
     throw new Error('Organization does not have an assistant');
+  }
+
+  const appliedInstructions = getAppliedInstructions(org.instructions);
+  let fileContents = '';
+  try {
+    fileContents = await fs.promises.readFile(filePath, 'utf8');
+  } catch (err) {
+    logger.warn(`Failed to read file for inspection before upload: ${filePath}`, err);
+  }
+
+  if (matchesSystemInstructions(fileContents, appliedInstructions)) {
+    logger.warn(
+      `Skipping upload for ${filePath} because it matches system instructions for organization ${orgId}`
+    );
+    return { skipped: true, reason: SYSTEM_INSTRUCTIONS_FILTER_REASON };
   }
 
   const file = await openai.files.create({
