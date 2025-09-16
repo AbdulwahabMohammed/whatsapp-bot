@@ -29,7 +29,12 @@ jest.mock('speakeasy', () => ({
 
 jest.mock('qrcode', () => ({ toDataURL: jest.fn() }));
 jest.mock('../src/assistant', () => ({ createAssistant: jest.fn() }));
-jest.mock('../src/scripts/uploadFile', () => ({ upload: jest.fn() }));
+jest.mock('../src/scripts/uploadFile', () => ({
+  upload: jest.fn(),
+  formatAllowedFileTypes: jest.fn(() => '.txt (text/plain)'),
+  formatFileSize: jest.fn(() => '10.00 MB'),
+  MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024
+}));
 
 const mockEvents = new EventEmitter();
 let mockStatus = 'stopped';

@@ -12,7 +12,10 @@ jest.mock('../src/assistant', () => ({
 }));
 
 jest.mock('../src/scripts/uploadFile', () => ({
-  upload: jest.fn()
+  upload: jest.fn(),
+  formatAllowedFileTypes: jest.fn(() => '.txt (text/plain)'),
+  formatFileSize: jest.fn(() => '10.00 MB'),
+  MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024
 }));
 
 jest.mock('../src/logger', () => ({
@@ -46,6 +49,7 @@ const pool = require('../src/db');
 
 const { app, startAdminServer, stopAdminServer } = require('../src/admin');
 const { createOrganization } = require('../src/index');
+const uploadModule = require('../src/scripts/uploadFile');
 
 describe('admin routes', () => {
   let serverInfo;
@@ -59,6 +63,7 @@ describe('admin routes', () => {
   });
 
   beforeEach(() => {
+    uploadModule.upload.mockResolvedValue({});
     const hash = bcrypt.hashSync('secret', 10);
     pool.query.mockImplementation(async text => {
       if (text.includes('SELECT password_hash')) {
@@ -70,6 +75,7 @@ describe('admin routes', () => {
 
   afterEach(() => {
     pool.query.mockReset();
+    uploadModule.upload.mockReset();
     const qrcode = require('qrcode');
     qrcode.toDataURL.mockReset();
   });
@@ -187,6 +193,50 @@ describe('admin routes', () => {
       null,
       null
     );
+  });
+
+  it('returns upload success over JSON', async () => {
+    const agent = request.agent(app);
+    await login(agent);
+    uploadModule.upload.mockResolvedValueOnce({});
+    const res = await postExpectStatus(
+      agent,
+      '/org/1/upload',
+      200,
+      { filePath: '/tmp/example.txt' },
+      { tokenPath: '/org/1/upload', accept: 'application/json' }
+    );
+    expect(res.body).toEqual({ ok: true, message: 'File uploaded' });
+    expect(uploadModule.upload).toHaveBeenCalledWith('1', '/tmp/example.txt');
+  });
+
+  it('returns validation errors over JSON uploads', async () => {
+    const agent = request.agent(app);
+    await login(agent);
+    uploadModule.upload.mockRejectedValueOnce(Object.assign(new Error('Unsupported file extension'), { statusCode: 400 }));
+    const res = await postExpectStatus(
+      agent,
+      '/org/1/upload',
+      400,
+      { filePath: '/tmp/bad.exe' },
+      { tokenPath: '/org/1/upload', accept: 'application/json' }
+    );
+    expect(res.body).toEqual({ ok: false, message: 'Unsupported file extension' });
+  });
+
+  it('renders upload page with error when validation fails', async () => {
+    const agent = request.agent(app);
+    await login(agent);
+    uploadModule.upload.mockRejectedValueOnce(Object.assign(new Error('File too large'), { statusCode: 400 }));
+    const res = await postExpectStatus(
+      agent,
+      '/org/1/upload',
+      400,
+      { filePath: '/tmp/big.txt' },
+      { tokenPath: '/org/1/upload' }
+    );
+    expect(res.text).toContain('File too large');
+    expect(res.text).toContain('Supported files');
   });
 
   it('lists organizations', async () => {
