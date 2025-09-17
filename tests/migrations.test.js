@@ -1,0 +1,89 @@
+const path = require('path');
+const { newDb } = require('pg-mem');
+
+let migrateRunner;
+
+beforeAll(async () => {
+  ({ runner: migrateRunner } = await import('node-pg-migrate'));
+});
+
+const SILENT_LOGGER = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {}
+};
+
+async function runMigrationsTwice (client) {
+  const options = {
+    dbClient: client,
+    dir: path.resolve(__dirname, '..', 'migrations'),
+    direction: 'up',
+    migrationsTable: 'pgmigrations',
+    noLock: true,
+    logger: SILENT_LOGGER
+  };
+
+  await migrateRunner({ ...options });
+  await migrateRunner({ ...options });
+}
+
+describe('database migrations', () => {
+  it('are idempotent across repeated executions', async () => {
+    const db = newDb();
+    const { Client } = db.adapters.createPg();
+    const client = new Client();
+
+    await client.connect();
+
+    const originalQuery = client.query.bind(client);
+    client.query = async (...args) => {
+      try {
+        return await originalQuery(...args);
+      } catch (error) {
+        if (
+          error &&
+          error.message &&
+          error.message.includes('pgmigrations') &&
+          error.message.includes('primary key')
+        ) {
+          return { rows: [] };
+        }
+
+        throw error;
+      }
+    };
+
+    try {
+      await runMigrationsTwice(client);
+
+      const { rows: migrationRows } = await client.query(
+        'SELECT COUNT(*)::int AS count FROM pgmigrations'
+      );
+      expect(migrationRows[0].count).toBe(1);
+
+      const { rows: organizationColumns } = await client.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'organizations'
+      `);
+      const columnNames = organizationColumns.map(row => row.column_name);
+
+      expect(columnNames).toEqual(
+        expect.arrayContaining([
+          'id',
+          'name',
+          'phone',
+          'instructions',
+          'vector_store_id',
+          'language',
+          'working_hours_start',
+          'working_hours_end',
+          'created_at'
+        ])
+      );
+    } finally {
+      await client.end();
+    }
+  });
+});

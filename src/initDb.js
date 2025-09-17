@@ -1,223 +1,88 @@
+const path = require('path');
+const { Client } = require('pg');
+const bcrypt = require('bcrypt');
+const { runner } = require('node-pg-migrate');
+
 const pool = require('./db');
 const logger = require('./logger');
-const bcrypt = require('bcrypt');
 
-async function init () {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS organizations (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      phone TEXT,
-      instructions TEXT,
-      vector_store_id TEXT,
-      language TEXT DEFAULT 'ar',
-      working_hours_start TIME,
-      working_hours_end TIME,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
+async function runMigrations () {
+  const client = new Client({
+    host: process.env.PGHOST,
+    user: process.env.PGUSER,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: process.env.PGPORT
+  });
 
-  // Ensure the vector_store_id column exists when upgrading an older schema
-  await pool.query(
-    'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS vector_store_id TEXT'
-  );
+  await client.connect();
 
-  await pool.query(
-    'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS instructions TEXT'
-  );
-
-  await pool.query(
-    "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'ar'"
-  );
-
-  await pool.query(
-    'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS working_hours_start TIME'
-  );
-
-  await pool.query(
-    'ALTER TABLE organizations ADD COLUMN IF NOT EXISTS working_hours_end TIME'
-  );
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS documents (
-      id SERIAL PRIMARY KEY,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
-      file_id TEXT,
-      file_name TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS conversations (
-      id SERIAL PRIMARY KEY,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
-      customer_phone TEXT NOT NULL,
-      thread_id TEXT NOT NULL,
-      escalated BOOLEAN DEFAULT FALSE,
-      detected_language TEXT,
-      summary TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(
-    'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS detected_language TEXT'
-  );
-
-  await pool.query(
-    'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS summary TEXT'
-  );
-
-  await pool.query(
-    'ALTER TABLE conversations ADD COLUMN IF NOT EXISTS escalated BOOLEAN DEFAULT FALSE'
-  );
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY,
-      conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-      sender TEXT NOT NULL,
-      text TEXT,
-      attachment_type TEXT,
-      attachment_path TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(
-    'ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type TEXT'
-  );
-  await pool.query(
-    'ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_path TEXT'
-  );
-
-  await pool.query(
-    'ALTER TABLE messages ALTER COLUMN text DROP NOT NULL'
-  );
-
-  await pool.query(
-    "ALTER TABLE messages ALTER COLUMN text SET DEFAULT ''"
-  );
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS scheduled_messages (
-      id SERIAL PRIMARY KEY,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
-      phone TEXT NOT NULL,
-      text TEXT NOT NULL,
-      send_at TIMESTAMP NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS usage_stats (
-      id SERIAL PRIMARY KEY,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
-      tokens_prompt INTEGER NOT NULL,
-      tokens_completion INTEGER NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS conversation_stats (
-      id SERIAL PRIMARY KEY,
-      conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-      response_time_ms INTEGER NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS unanswered_questions (
-      id SERIAL PRIMARY KEY,
-      phone TEXT NOT NULL,
-      message TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS faq_suggestions (
-      id SERIAL PRIMARY KEY,
-      question TEXT UNIQUE NOT NULL,
-      count INTEGER NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS bots (
-      id SERIAL PRIMARY KEY,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
-      assistant_id TEXT,
-      name TEXT,
-      phone TEXT,
-      status TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(
-    'CREATE INDEX IF NOT EXISTS idx_bots_organization_id ON bots(organization_id)'
-  );
-  await pool.query(
-    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_assistant_id ON bots(assistant_id)'
-  );
-  await pool.query(
-    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_phone ON bots(phone)'
-  );
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'admin',
-      organization_id INTEGER REFERENCES organizations(id),
-      totp_secret TEXT
-    );
-  `);
-
-  await pool.query(
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'"
-  );
-
-  await pool.query(
-    'ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT'
-  );
-
-  await pool.query(
-    'ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organizations(id)'
-  );
-
-  await pool.query(
-    'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)'
-  );
-
-  await pool.query(
-    'CREATE INDEX IF NOT EXISTS idx_conversations_customer_phone ON conversations(customer_phone)'
-  );
-
-  await pool.query(
-    'CREATE INDEX IF NOT EXISTS idx_users_organization_id ON users(organization_id)'
-  );
-
-  if (process.env.ADMIN_PASSWORD) {
-    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
-    await pool.query(
-      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)\n        ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role',
-      ['admin', hash, 'admin']
-    );
+  try {
+    await runner({
+      dbClient: client,
+      dir: path.resolve(__dirname, '..', 'migrations'),
+      direction: 'up',
+      noLock: true,
+      migrationsTable: 'pgmigrations',
+      logger
+    });
+  } finally {
+    await client.end();
   }
-
-  logger.info('Database initialized');
-  process.exit();
 }
 
-init().catch(err => {
-  logger.error('Failed to initialize DB:', err);
-  process.exit(1);
-});
+async function ensureAdminUser () {
+  if (!process.env.ADMIN_PASSWORD) {
+    return;
+  }
+
+  const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+  await pool.query(
+    `INSERT INTO users (username, password_hash, role)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (username)
+     DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role`,
+    ['admin', hash, 'admin']
+  );
+}
+
+async function init () {
+  await runMigrations();
+  await ensureAdminUser();
+}
+
+async function closePool () {
+  try {
+    await pool.end();
+    logger.info('Database pool closed');
+  } catch (closeError) {
+    logger.error('Failed to close database pool:', closeError);
+    if (!process.exitCode) {
+      process.exitCode = 1;
+    }
+  }
+}
+
+async function main () {
+  try {
+    await init();
+    logger.info('Database initialized');
+  } catch (error) {
+    logger.error('Failed to initialize DB:', error);
+    process.exitCode = 1;
+  } finally {
+    await closePool();
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  init,
+  runMigrations,
+  ensureAdminUser,
+  closePool,
+  main
+};
