@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const { newDb } = require('pg-mem');
 
@@ -60,7 +61,10 @@ describe('database migrations', () => {
       const { rows: migrationRows } = await client.query(
         'SELECT COUNT(*)::int AS count FROM pgmigrations'
       );
-      expect(migrationRows[0].count).toBe(1);
+      const expectedMigrationCount = fs
+        .readdirSync(path.resolve(__dirname, '..', 'migrations'))
+        .filter(fileName => fileName.endsWith('.js')).length;
+      expect(migrationRows[0].count).toBe(expectedMigrationCount);
 
       const { rows: organizationColumns } = await client.query(`
         SELECT column_name
@@ -79,7 +83,8 @@ describe('database migrations', () => {
           'language',
           'working_hours_start',
           'working_hours_end',
-          'created_at'
+          'created_at',
+          'updated_at'
         ])
       );
     } finally {
