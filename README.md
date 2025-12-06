@@ -181,13 +181,16 @@
    ```bash
    docker compose up -d --build
    ```
-3. Open the admin UI at `http://localhost:3001` (or your `ADMIN_PORT`).
+3. Open the admin UI at `http://SERVER-IP:31371` (or your `APP_HOST_PORT`).
 4. Run migrations when needed:
    ```bash
    docker compose run --rm migrate
    ```
 5. View logs: `docker compose logs -f app` or `docker compose logs -f worker`.
 6. Stop all services: `docker compose down`.
+
+- Postgres (`db`) and Redis (`redis`) stay internal to the Docker network and are not published to the host.
+- Override the host port by setting `APP_HOST_PORT` in `.env`; the app keeps listening on the internal `APP_PORT` (default `3001`).
 
 ## الرخصة
 هذا المشروع موزع وفق رخصة MIT، ويمكنك الاطلاع على نص الرخصة في ملف [LICENSE](LICENSE).
