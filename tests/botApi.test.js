@@ -72,7 +72,7 @@ jest.mock('../src/db', () => ({
         ]
       };
     }
-    if (text.startsWith('INSERT INTO bots')) {
+    if (text.startsWith('INSERT INTO whatsapp_bots')) {
       const bot = {
         id: bots.length + 1,
         organization_id: Number(params[0]),
@@ -84,18 +84,18 @@ jest.mock('../src/db', () => ({
       bots.push(bot);
       return { rows: [bot] };
     }
-    if (text.startsWith('SELECT id, name, assistant_id, status FROM bots WHERE organization_id=$1')) {
+    if (text.startsWith('SELECT id, name, assistant_id, status FROM whatsapp_bots WHERE organization_id=$1')) {
       return { rows: bots.filter(b => b.organization_id === Number(params[0])) };
     }
-    if (text.startsWith('SELECT organization_id FROM bots WHERE id=$1')) {
+    if (text.startsWith('SELECT organization_id FROM whatsapp_bots WHERE id=$1')) {
       const bot = bots.find(b => b.id === Number(params[0]));
       return { rows: bot ? [{ organization_id: bot.organization_id }] : [] };
     }
-    if (text.startsWith('SELECT * FROM bots WHERE id=$1')) {
+    if (text.startsWith('SELECT * FROM whatsapp_bots WHERE id=$1')) {
       const bot = bots.find(b => b.id === Number(params[0]));
       return { rows: bot ? [bot] : [] };
     }
-    if (text.startsWith('SELECT id FROM bots')) {
+    if (text.startsWith('SELECT id FROM whatsapp_bots')) {
       return { rows: bots.map(b => ({ id: b.id })) };
     }
     return { rows: [] };

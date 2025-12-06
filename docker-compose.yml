@@ -33,6 +33,10 @@ services:
       APP_PORT: ${APP_PORT:-3001}
       ADMIN_PORT: ${APP_PORT:-3001}
       PGHOST: db
+      PGUSER: ${PGUSER:-postgres}
+      PGPASSWORD: ${PGPASSWORD:-password}
+      PGDATABASE: ${PGDATABASE:-whatsapp_bot}
+      PGPORT: ${PGPORT:-5432}
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
     depends_on:
@@ -55,6 +59,10 @@ services:
     env_file: .env
     environment:
       PGHOST: db
+      PGUSER: ${PGUSER:-postgres}
+      PGPASSWORD: ${PGPASSWORD:-password}
+      PGDATABASE: ${PGDATABASE:-whatsapp_bot}
+      PGPORT: ${PGPORT:-5432}
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
     depends_on:
@@ -71,6 +79,10 @@ services:
     env_file: .env
     environment:
       PGHOST: db
+      PGUSER: ${PGUSER:-postgres}
+      PGPASSWORD: ${PGPASSWORD:-password}
+      PGDATABASE: ${PGDATABASE:-whatsapp_bot}
+      PGPORT: ${PGPORT:-5432}
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
     depends_on:

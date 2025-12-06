@@ -35,7 +35,7 @@ async function createAssistant (organizationId) {
     return null;
   }
   const orgRes = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [organizationId]);
-  const botRes = await pool.query('SELECT * FROM bots WHERE organization_id=$1', [organizationId]);
+  const botRes = await pool.query('SELECT * FROM whatsapp_bots WHERE organization_id=$1', [organizationId]);
   const org = orgRes.rows[0] || {};
   const bot = botRes.rows[0];
   const instructions =
@@ -61,12 +61,12 @@ async function createAssistant (organizationId) {
 
   if (bot) {
     await pool.query(
-      'UPDATE bots SET assistant_id=$1, name=$2, status=$3 WHERE id=$4',
+      'UPDATE whatsapp_bots SET assistant_id=$1, name=$2, status=$3, updated_at=NOW() WHERE id=$4',
       [assistant.id, `Org-${organizationId}-Bot`, 'active', bot.id]
     );
   } else {
     await pool.query(
-      'INSERT INTO bots (organization_id, assistant_id, name, status) VALUES ($1,$2,$3,$4)',
+      'INSERT INTO whatsapp_bots (organization_id, assistant_id, name, status) VALUES ($1,$2,$3,$4)',
       [organizationId, assistant.id, `Org-${organizationId}-Bot`, 'active']
     );
   }
@@ -86,7 +86,7 @@ async function uploadFile (organizationId, filePath) {
   const orgRes = await pool.query(
     `SELECT b.assistant_id, o.vector_store_id, o.instructions
      FROM organizations o
-     JOIN bots b ON b.organization_id = o.id
+     JOIN whatsapp_bots b ON b.organization_id = o.id
      WHERE o.id=$1`,
     [organizationId]
   );

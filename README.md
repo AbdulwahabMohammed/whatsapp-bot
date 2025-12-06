@@ -197,6 +197,18 @@
 - Postgres (`db`) and Redis (`redis`) stay internal to the Docker network and are not published to the host.
 - Override the host port by setting `APP_HOST_PORT` in `.env`; the app keeps listening on the internal `APP_PORT` (default `3001`).
 
+## Database schema & initialization
+- المخطط المعتمد مذكور في `docs/schema.sql` ويتضمن الجداول الأساسية: organizations، users، whatsapp_bots، documents، conversations، messages، scheduled_messages، usage_stats، conversation_stats، unanswered_questions، faq_suggestions.
+- تهيئة قاعدة بيانات جديدة داخل Docker:
+  ```bash
+  docker compose up -d --build
+  docker compose run --rm migrate
+  ```
+- زرع بيانات تجريبية بعد التهيئة:
+  ```bash
+  docker compose run --rm app npm run seed:demo
+  ```
+
 ## Getting started: first demo bot
 1. Start the stack:
    ```bash

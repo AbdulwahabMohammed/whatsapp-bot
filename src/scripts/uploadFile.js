@@ -116,7 +116,7 @@ async function upload (orgId, filePath) {
   const orgRes = await pool.query(
     `SELECT b.assistant_id, o.vector_store_id, o.instructions
      FROM organizations o
-     JOIN bots b ON b.organization_id = o.id
+     JOIN whatsapp_bots b ON b.organization_id = o.id
      WHERE o.id=$1`,
     [orgId]
   );

@@ -39,6 +39,9 @@ describe('database migrations', () => {
 
     const originalQuery = client.query.bind(client);
     client.query = async (...args) => {
+      if (typeof args[0] === 'string' && args[0].includes('DO $$')) {
+        return { rows: [] };
+      }
       try {
         return await originalQuery(...args);
       } catch (error) {

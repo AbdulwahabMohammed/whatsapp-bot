@@ -7,34 +7,35 @@ async function migrate () {
   );
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS bots (
+    CREATE TABLE IF NOT EXISTS whatsapp_bots (
       id SERIAL PRIMARY KEY,
       organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
       assistant_id TEXT,
       name TEXT,
       phone TEXT,
       status TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW() NOT NULL
     );
   `);
 
   await pool.query(
-    'CREATE INDEX IF NOT EXISTS idx_bots_organization_id ON bots(organization_id)'
+    'CREATE INDEX IF NOT EXISTS idx_bots_organization_id ON whatsapp_bots(organization_id)'
   );
   await pool.query(
-    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_assistant_id ON bots(assistant_id)'
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_assistant_id ON whatsapp_bots(assistant_id)'
   );
   await pool.query(
-    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_phone ON bots(phone)'
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_bots_phone ON whatsapp_bots(phone)'
   );
 
   await pool.query(`
-    INSERT INTO bots (organization_id, assistant_id, name, phone, status)
+    INSERT INTO whatsapp_bots (organization_id, assistant_id, name, phone, status)
     SELECT id, assistant_id, name, phone, 'active'
     FROM organizations
     WHERE assistant_id IS NOT NULL
       AND NOT EXISTS (
-        SELECT 1 FROM bots b WHERE b.organization_id = organizations.id
+        SELECT 1 FROM whatsapp_bots b WHERE b.organization_id = organizations.id
       )
   `);
 
