@@ -3,19 +3,19 @@ const logger = require('../logger');
 
 async function migrate () {
   await pool.query(
-    'ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organizations(id)'
+    'ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id BIGINT REFERENCES organizations(id)'
   );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS whatsapp_bots (
-      id SERIAL PRIMARY KEY,
-      organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+      id BIGSERIAL PRIMARY KEY,
+      organization_id BIGINT REFERENCES organizations(id) ON DELETE CASCADE,
       assistant_id TEXT,
       name TEXT,
       phone TEXT,
       status TEXT,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
     );
   `);
 

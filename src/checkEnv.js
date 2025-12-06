@@ -2,14 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const { Client } = require('pg');
-const Redis = require('ioredis');
 const logger = require('./logger');
+const { createRedisClient, redisUrl } = require('./redisConfig');
 
 dotenv.config();
 
 const REQUIRED_PG_ENV = ['PGHOST', 'PGUSER', 'PGDATABASE', 'PGPASSWORD', 'PGPORT'];
 let cachedPromise;
-const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
 
 function ensureOpenAIKey () {
   if (!process.env.OPENAI_API_KEY) {
@@ -105,7 +104,7 @@ async function ensureWhatsAppAuthFolders (client) {
 }
 
 async function ensureRedisReady () {
-  const redis = new Redis(redisUrl, { lazyConnect: true });
+  const redis = createRedisClient({ lazyConnect: true });
 
   try {
     logger.info(`Checking Redis connectivity at: ${redisUrl}`);

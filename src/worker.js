@@ -20,6 +20,7 @@ const { startScheduler } = require('./scheduler');
 const { getSocket, startBot } = require('./botManager');
 const { messageQueue, bulkQueue } = require('./queue');
 const { MIN_REDIS_VERSION, ensureRedisVersion } = require('./redisVersion');
+const { redisConnection, redisUrl } = require('./redisConfig');
 
 const FAST_DEV = process.env.FAST_DEV === 'true';
 
@@ -33,9 +34,6 @@ function resolveIntEnv (name, defaultValue, devDefault) {
   const parsed = parseInt(raw, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
-
-const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
-const redisConnection = { url: REDIS_URL };
 
 const MIN_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 60000;
@@ -508,7 +506,7 @@ async function bootstrap () {
   }
 
   try {
-    const version = await ensureRedisVersion({ url: REDIS_URL, minVersion: MIN_REDIS_VERSION });
+    const version = await ensureRedisVersion({ url: redisUrl, minVersion: MIN_REDIS_VERSION });
     logger.info(`Redis version ${version} verified (required ≥ ${MIN_REDIS_VERSION}).`);
   } catch (error) {
     if (error.code === 'REDIS_VERSION_UNSUPPORTED') {
