@@ -22,7 +22,7 @@ describe('ensureRedisVersion', () => {
 
   test('resolves when Redis version meets the minimum requirement', async () => {
     await expect(
-      ensureRedisVersion({ url: 'redis://localhost:6379', minVersion: MIN_REDIS_VERSION })
+      ensureRedisVersion({ url: 'redis://redis:6379', minVersion: MIN_REDIS_VERSION })
     ).resolves.toBe('7.2.0');
     expect(mockRedisInstance.connect).toHaveBeenCalledTimes(1);
     expect(mockRedisInstance.disconnect).toHaveBeenCalledTimes(1);
@@ -32,7 +32,7 @@ describe('ensureRedisVersion', () => {
     mockRedisInstance.info.mockImplementation(async () => 'redis_version:6.0.9\r\n');
 
     await expect(
-      ensureRedisVersion({ url: 'redis://localhost:6379', minVersion: '6.2.0' })
+      ensureRedisVersion({ url: 'redis://redis:6379', minVersion: '6.2.0' })
     ).rejects.toMatchObject({
       code: 'REDIS_VERSION_UNSUPPORTED',
       currentVersion: '6.0.9',

@@ -10,6 +10,11 @@ jest.mock('pg', () => ({ Client: mockPgClientFactory }));
 
 const mockRedisFactory = jest.fn();
 jest.mock('ioredis', () => mockRedisFactory);
+jest.mock('../src/logger', () => ({
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn()
+}));
 
 describe('checkEnv', () => {
   const originalEnv = process.env;
@@ -24,7 +29,8 @@ describe('checkEnv', () => {
     process.env.PGDATABASE = 'db';
     process.env.PGPASSWORD = 'pass';
     process.env.PGPORT = '5432';
-    process.env.REDIS_URL = 'redis://localhost:6379';
+    process.env.REDIS_URL = 'redis://redis:6379';
+    process.env.OPENAI_API_KEY = 'test-api-key';
 
     mockFsModule.existsSync.mockReset();
 
@@ -86,6 +92,12 @@ describe('checkEnv', () => {
 
     const { checkEnv } = require('../src/checkEnv');
     await expect(checkEnv()).rejects.toThrow('Unable to connect to PostgreSQL');
+  });
+
+  test('throws when OpenAI API key is missing', async () => {
+    delete process.env.OPENAI_API_KEY;
+    const { checkEnv } = require('../src/checkEnv');
+    await expect(checkEnv()).rejects.toThrow('OPENAI_API_KEY is not set');
   });
 
   test('throws when Redis is unavailable', async () => {
