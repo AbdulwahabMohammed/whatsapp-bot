@@ -34,11 +34,12 @@ async function seedDemoBot () {
     console.log(`Organization ID: ${organizationId}`);
 
     const botResult = await pool.query(
-      `INSERT INTO whatsapp_bots (organization_id, assistant_id, name, phone, status, created_at, updated_at)
+      `INSERT INTO bots (organization_id, assistant_id, name, phone, status, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-       ON CONFLICT (organization_id, name) DO UPDATE
-         SET assistant_id = EXCLUDED.assistant_id,
-             phone = EXCLUDED.phone,
+       ON CONFLICT (phone) DO UPDATE
+         SET organization_id = EXCLUDED.organization_id,
+             assistant_id = EXCLUDED.assistant_id,
+             name = EXCLUDED.name,
              status = EXCLUDED.status,
              updated_at = EXCLUDED.updated_at
        RETURNING id`,
