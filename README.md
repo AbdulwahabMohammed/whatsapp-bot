@@ -187,12 +187,21 @@
    docker compose up -d --build
    ```
 3. Open the admin UI at `http://SERVER-IP:31371` (or your `APP_HOST_PORT`).
-4. Run migrations when needed:
+4. Run migrations (idempotent, also executed automatically before app/worker start):
    ```bash
    docker compose run --rm migrate
    ```
-5. View logs: `docker compose logs -f app` or `docker compose logs -f worker`.
-6. Stop all services: `docker compose down`.
+5. Seed demo data:
+   ```bash
+   docker compose run --rm app npm run seed:demo
+   ```
+6. View logs: `docker compose logs -f app` or `docker compose logs -f worker`.
+7. Reset everything (including Postgres volume) then re-run steps 2–5:
+   ```bash
+   docker compose down -v
+   ```
+
+- Redis is configured via `REDIS_URL` (defaults to `redis://redis:6379` in Docker). Postgres uses `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGPORT`.
 
 - Postgres (`db`) and Redis (`redis`) stay internal to the Docker network and are not published to the host.
 - Override the host port by setting `APP_HOST_PORT` in `.env`; the app keeps listening on the internal `APP_PORT` (default `3001`).
