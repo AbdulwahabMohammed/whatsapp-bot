@@ -197,6 +197,23 @@
 - Postgres (`db`) and Redis (`redis`) stay internal to the Docker network and are not published to the host.
 - Override the host port by setting `APP_HOST_PORT` in `.env`; the app keeps listening on the internal `APP_PORT` (default `3001`).
 
+## Getting started: first demo bot
+1. Start the stack:
+   ```bash
+   docker compose up -d
+   ```
+2. Run migrations:
+   ```bash
+   docker compose run --rm migrate
+   ```
+3. Seed a demo organization and bot:
+   ```bash
+   docker compose run --rm app npm run seed:demo
+   ```
+4. Open the Admin UI at `http://<SERVER_IP>:${APP_HOST_PORT:-31371}` and sign in as `admin` using the password from `ADMIN_PASSWORD` in `.env`.
+5. Verify "Demo Organization" and the "Demo WhatsApp Bot" appear under its Bots page.
+6. Link WhatsApp by keeping the worker running, tailing logs with `docker compose logs -f worker`, opening the QR link it prints, and scanning it from WhatsApp > Linked Devices.
+
 ## الرخصة
 هذا المشروع موزع وفق رخصة MIT، ويمكنك الاطلاع على نص الرخصة في ملف [LICENSE](LICENSE).
 جميع حقوق النشر محفوظة لـ whatsapp-bot 2024.
