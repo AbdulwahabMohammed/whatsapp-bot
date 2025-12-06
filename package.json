@@ -10,6 +10,9 @@
     "upload-file": "node src/scripts/uploadFile.js",
     "generate-faq": "node src/scripts/generateFaq.js",
     "check-env": "node src/checkEnv.js",
+    "test:redis": "node src/scripts/testConnectivity.js --redis",
+    "test:db": "node src/scripts/testConnectivity.js --db",
+    "test:env": "node src/scripts/testConnectivity.js",
     "migrate": "node src/initDb.js",
     "worker": "node src/worker.js",
     "lint": "eslint \"src/**\" \"tests/**\""

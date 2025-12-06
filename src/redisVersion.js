@@ -48,7 +48,7 @@ function parseVersionFromInfo (info) {
 
 async function ensureRedisVersion (options = {}) {
   const {
-    url = process.env.REDIS_URL || 'redis://localhost:6379',
+    url = process.env.REDIS_URL || 'redis://redis:6379',
     minVersion = MIN_REDIS_VERSION
   } = options;
 

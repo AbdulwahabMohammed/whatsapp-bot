@@ -34,7 +34,7 @@ function resolveIntEnv (name, defaultValue, devDefault) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const redisConnection = { url: REDIS_URL };
 
 const MIN_RETRY_DELAY_MS = 1000;

@@ -3,11 +3,24 @@ const path = require('path');
 const dotenv = require('dotenv');
 const { Client } = require('pg');
 const Redis = require('ioredis');
+const logger = require('./logger');
 
 dotenv.config();
 
 const REQUIRED_PG_ENV = ['PGHOST', 'PGUSER', 'PGDATABASE', 'PGPASSWORD', 'PGPORT'];
 let cachedPromise;
+const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+
+function ensureOpenAIKey () {
+  if (!process.env.OPENAI_API_KEY) {
+    const error = new Error('OPENAI_API_KEY is not set.');
+    error.code = 'OPENAI_API_KEY_MISSING';
+    logger.error(error.message);
+    throw error;
+  }
+
+  logger.info('OpenAI API key present.');
+}
 
 function buildPostgresConfig () {
   const missing = REQUIRED_PG_ENV.filter(name => !process.env[name]);
@@ -43,11 +56,14 @@ async function ensurePostgresReady () {
   });
 
   try {
+    logger.info(`Checking PostgreSQL connectivity at ${config.host}:${config.port}/${config.database}`);
     await client.connect();
     await client.query('SELECT 1');
+    logger.info('PostgreSQL connection OK.');
     return client;
   } catch (cause) {
     const message = `Unable to connect to PostgreSQL at ${config.host}:${config.port}/${config.database}: ${cause.message}`;
+    logger.error(message, cause);
     const error = new Error(message);
     error.code = 'POSTGRES_CONNECTION_FAILED';
     error.cause = cause;
@@ -89,14 +105,16 @@ async function ensureWhatsAppAuthFolders (client) {
 }
 
 async function ensureRedisReady () {
-  const url = process.env.REDIS_URL || 'redis://localhost:6379';
-  const redis = new Redis(url, { lazyConnect: true });
+  const redis = new Redis(redisUrl, { lazyConnect: true });
 
   try {
+    logger.info(`Checking Redis connectivity at: ${redisUrl}`);
     await redis.connect();
     await redis.ping();
+    logger.info('Redis connection OK.');
   } catch (cause) {
-    const error = new Error(`Unable to connect to Redis at ${url}: ${cause.message}`);
+    logger.error(`Failed to connect to Redis at ${redisUrl}`, cause);
+    const error = new Error(`Unable to connect to Redis at ${redisUrl}: ${cause.message}`);
     error.code = 'REDIS_UNAVAILABLE';
     error.cause = cause;
     throw error;
@@ -106,6 +124,7 @@ async function ensureRedisReady () {
 }
 
 async function runChecks () {
+  ensureOpenAIKey();
   const client = await ensurePostgresReady();
   try {
     await ensureWhatsAppAuthFolders(client);
