@@ -21,7 +21,7 @@ async function runMigrationsTwice (client) {
     dir: path.resolve(__dirname, '..', 'migrations'),
     direction: 'up',
     migrationsTable: 'pgmigrations',
-    noLock: true,
+    noLock: false,
     logger: SILENT_LOGGER
   };
 

@@ -22,7 +22,7 @@ async function runMigrations () {
       dbClient: client,
       dir: path.resolve(__dirname, '..', 'migrations'),
       direction: 'up',
-      noLock: true,
+      noLock: false,
       migrationsTable: 'pgmigrations',
       logger
     });

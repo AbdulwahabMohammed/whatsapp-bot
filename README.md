@@ -207,11 +207,13 @@
 - Override the host port by setting `APP_HOST_PORT` in `.env`; the app keeps listening on the internal `APP_PORT` (default `3001`).
 
 ## Database schema & initialization
-- All tables are created via `migrations/*.js` using `BIGSERIAL` primary keys and `TIMESTAMPTZ` timestamps. Key relations:
+- All tables are created via `migrations/*.js` (13-digit prefixes like `0000000000001_initial_schema.js`) using `BIGSERIAL` primary keys and `TIMESTAMPTZ` timestamps. Key relations:
   - `organizations` own `whatsapp_bots`, `documents`, `conversations`, `scheduled_messages`, `usage_stats`, `unanswered_questions`, and `faq_suggestions` (CASCADE on delete where appropriate).
   - `whatsapp_bots` are unique per organization/assistant/phone and track status + timestamps.
   - `conversations` and `messages` cascade deletes with `conversation_stats` linked per message; `usage_stats` aggregate per organization.
   - `users` may belong to an organization and store optional TOTP secrets.
+- Run `npm run migrate` (or the Docker `migrate` service) as often as needed; the migrations table is created with locking to avoid duplicate runs when app and worker start together.
+- To add a new migration, copy the prefix pattern above, place the file in `migrations/`, and commit it alongside any schema-dependent code.
 - Fresh Docker init:
   ```bash
   docker compose up -d db redis
@@ -219,8 +221,12 @@
   docker compose run --rm app npm run seed:demo
   docker compose up -d
   ```
-- The seed script creates (or updates) a demo organization and WhatsApp bot; it is safe to re-run.
-- All Redis clients read `REDIS_URL` (defaults to `redis://redis:6379` in Docker).
+- The seed script creates (or updates) a demo organization and WhatsApp bot; it is safe to re-run and keeps IDs aligned with `auth-<botId>` folders.
+- Redis clients read `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` (Docker defaults to `redis://redis:6379`).
+
+## WhatsApp auth storage
+- Session folders live under `WHATSAPP_AUTH_DIR` (Docker default `/app/whatsapp-auth`, mounted from `./whatsapp-auth`).
+- On startup the environment check creates any missing `auth-<botId>` directory for every `whatsapp_bots` row instead of failing; scan the QR to populate the folder.
 
 ## Getting started: first demo bot
 1. Start the stack:
