@@ -36,16 +36,16 @@ async function seedDemoBot () {
     const botResult = await pool.query(
       `INSERT INTO bots (organization_id, assistant_id, name, phone, status, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-       ON CONFLICT (assistant_id) DO UPDATE
+       ON CONFLICT (phone) DO UPDATE
          SET organization_id = EXCLUDED.organization_id,
+             assistant_id = COALESCE(bots.assistant_id, EXCLUDED.assistant_id),
              name = EXCLUDED.name,
-             phone = EXCLUDED.phone,
              status = EXCLUDED.status,
              updated_at = EXCLUDED.updated_at
        RETURNING id`,
       [
         organizationId,
-        'demo-assistant',
+        null,
         'Demo WhatsApp Bot',
         '+10000000000',
         'active'
