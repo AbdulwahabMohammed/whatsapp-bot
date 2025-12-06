@@ -44,7 +44,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ['node', 'src/admin.js']
+    command: ['sh', '-c', 'npm run migrate && node src/admin.js']
     ports:
       - '${APP_HOST_PORT:-31371}:${APP_PORT:-3001}'
     healthcheck:
@@ -70,7 +70,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ['node', 'src/worker.js']
+    command: ['sh', '-c', 'npm run migrate && node src/worker.js']
     restart: unless-stopped
 
   migrate:

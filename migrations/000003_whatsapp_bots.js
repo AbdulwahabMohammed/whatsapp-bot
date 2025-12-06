@@ -2,22 +2,6 @@
 exports.shorthands = undefined;
 
 exports.up = pgm => {
-  pgm.createTable('whatsapp_bots', {
-    id: { type: 'bigserial', primaryKey: true },
-    organization_id: {
-      type: 'bigint',
-      notNull: true,
-      references: 'organizations(id)',
-      onDelete: 'CASCADE'
-    },
-    assistant_id: { type: 'text' },
-    name: { type: 'text' },
-    phone: { type: 'text' },
-    status: { type: 'text' },
-    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
-    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') }
-  }, { ifNotExists: true });
-
   pgm.createIndex('whatsapp_bots', 'organization_id', { ifNotExists: true });
   pgm.createIndex('whatsapp_bots', 'assistant_id', { unique: true, ifNotExists: true });
   pgm.createIndex('whatsapp_bots', 'phone', { unique: true, ifNotExists: true });

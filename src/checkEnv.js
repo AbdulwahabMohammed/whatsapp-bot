@@ -81,7 +81,21 @@ function hasAuthFolder (botId) {
 }
 
 async function ensureWhatsAppAuthFolders (client) {
-  const { rows } = await client.query('SELECT id, name, phone FROM whatsapp_bots ORDER BY id');
+  let botsResult;
+  try {
+    botsResult = await client.query('SELECT id, name, phone FROM whatsapp_bots ORDER BY id');
+  } catch (error) {
+    if (error.code === '42P01') {
+      const missingTableError = new Error(
+        'Table "whatsapp_bots" is missing. Run the migrations (npm run migrate or docker compose run --rm migrate) before starting the app.'
+      );
+      missingTableError.code = 'TABLES_NOT_MIGRATED';
+      missingTableError.cause = error;
+      throw missingTableError;
+    }
+    throw error;
+  }
+  const { rows } = botsResult;
   if (!rows.length) {
     return;
   }
