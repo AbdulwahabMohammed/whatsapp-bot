@@ -30,6 +30,8 @@ services:
     build: .
     env_file: .env
     environment:
+      APP_PORT: ${APP_PORT:-3001}
+      ADMIN_PORT: ${APP_PORT:-3001}
       PGHOST: db
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
@@ -40,9 +42,9 @@ services:
         condition: service_healthy
     command: ['node', 'src/admin.js']
     ports:
-      - '${ADMIN_PORT:-3001}:3001'
+      - '${APP_HOST_PORT:-31371}:${APP_PORT:-3001}'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001 || exit 1']
+      test: ['CMD-SHELL', 'wget -qO- "http://localhost:${APP_PORT:-3001}" || exit 1']
       interval: 10s
       timeout: 5s
       retries: 5
