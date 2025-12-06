@@ -57,6 +57,10 @@ jest.mock('../src/db', () => ({
 
 process.env.SESSION_SECRET = 'test-secret';
 
+if (!global.crypto) {
+  global.crypto = require('crypto').webcrypto;
+}
+
 const pool = require('../src/db');
 
 const { app, startAdminServer, stopAdminServer } = require('../src/admin');
@@ -376,6 +380,7 @@ describe('admin routes', () => {
     const logger = require('../src/logger');
     delete process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = ''; // Prevent dotenv from restoring the value
+    process.env.NODE_ENV = 'development';
     logger.error.mockClear();
     expect(() => require('../src/openai')).toThrow('OPENAI_API_KEY is missing or invalid');
     expect(logger.error).toHaveBeenCalledWith('OPENAI_API_KEY is missing or invalid');
@@ -386,6 +391,7 @@ describe('admin routes', () => {
     jest.resetModules();
     const logger = require('../src/logger');
     process.env.OPENAI_API_KEY = 'invalid-key';
+    process.env.NODE_ENV = 'development';
     logger.error.mockClear();
     expect(() => require('../src/openai')).toThrow('OPENAI_API_KEY is missing or invalid');
     expect(logger.error).toHaveBeenCalledWith('OPENAI_API_KEY is missing or invalid');

@@ -16,14 +16,42 @@ const logger = require('./logger');
 
 dotenv.config();
 
+const isTest = process.env.NODE_ENV === 'test';
 const key = process.env.OPENAI_API_KEY;
+
 if (!key || !key.startsWith('sk-') || key.length < 40) {
-  logger.error('OPENAI_API_KEY is missing or invalid');
-  throw new Error('OPENAI_API_KEY is missing or invalid');
+  if (!isTest) {
+    logger.error('OPENAI_API_KEY is missing or invalid');
+    throw new Error('OPENAI_API_KEY is missing or invalid');
+  }
+
+  logger.warn('OPENAI_API_KEY is not set – using mock OpenAI client in test mode');
+  const mockOpenAI = {
+    chat: {
+      completions: {
+        create: async () => ({ choices: [{ message: { content: 'en' } }] })
+      }
+    },
+    beta: {
+      threads: {
+        create: async () => ({ id: 'test-thread' }),
+        messages: {
+          create: async () => ({ id: 'test-message' }),
+          list: async () => ({ data: [{ content: [{ text: { value: 'Test reply' } }] }] })
+        },
+        runs: {
+          create: async () => ({ id: 'test-run', status: 'completed' }),
+          retrieve: async () => ({ id: 'test-run', status: 'completed' })
+        }
+      }
+    }
+  };
+
+  module.exports = mockOpenAI;
+} else {
+  const openai = new OpenAI({
+    apiKey: key
+  });
+
+  module.exports = openai;
 }
-
-const openai = new OpenAI({
-  apiKey: key
-});
-
-module.exports = openai;
