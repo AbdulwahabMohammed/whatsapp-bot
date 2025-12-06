@@ -82,7 +82,7 @@ function hasAuthFolder (botId) {
 }
 
 async function ensureWhatsAppAuthFolders (client) {
-  const { rows } = await client.query('SELECT id, name, phone FROM bots ORDER BY id');
+  const { rows } = await client.query('SELECT id, name, phone FROM whatsapp_bots ORDER BY id');
   if (!rows.length) {
     return;
   }

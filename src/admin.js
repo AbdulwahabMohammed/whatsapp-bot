@@ -127,7 +127,7 @@ function requireOrgAccess (req, res, next) {
 async function requireBotAccess (req, res, next) {
   if (req.session.role === 'admin') return next();
   try {
-    const { rows } = await pool.query('SELECT organization_id FROM bots WHERE id=$1', [
+    const { rows } = await pool.query('SELECT organization_id FROM whatsapp_bots WHERE id=$1', [
       req.params.botId
     ]);
     const orgId = rows[0]?.organization_id;
@@ -181,7 +181,7 @@ async function broadcastStatus () {
   values.forEach(v => {
     conn[v.labels.bot_id] = v.value;
   });
-  const { rows } = await pool.query('SELECT id FROM bots');
+  const { rows } = await pool.query('SELECT id FROM whatsapp_bots');
   const statuses = {};
   rows.forEach(r => {
     statuses[r.id] = getBotStatus(r.id);
@@ -437,7 +437,7 @@ app.post('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => 
 
 app.get('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT id, name, assistant_id, status FROM bots WHERE organization_id=$1',
+    'SELECT id, name, assistant_id, status FROM whatsapp_bots WHERE organization_id=$1',
     [req.params.orgId]
   );
   res.json(rows);
@@ -445,7 +445,7 @@ app.get('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) =>
 
 app.get('/org/:orgId/bots/manage', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT id, name, assistant_id, status FROM bots WHERE organization_id=$1',
+    'SELECT id, name, assistant_id, status FROM whatsapp_bots WHERE organization_id=$1',
     [req.params.orgId]
   );
   res.render('bots', { orgId: req.params.orgId, bots: rows, role: req.session.role });
@@ -458,7 +458,7 @@ app.get('/org/:orgId/bots/new', requireEditor, requireOrgAccess, (req, res) => {
 app.post('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
   const { assistant_id, name, phone } = req.body;
   const { rows } = await pool.query(
-    'INSERT INTO bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    'INSERT INTO whatsapp_bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
     [req.params.orgId, assistant_id, name || null, phone || null, 'stopped']
   );
   if (req.headers.accept === 'application/json') {
@@ -468,7 +468,7 @@ app.post('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) =
 });
 
 app.post('/bot/:botId/start', requireEditor, requireBotAccess, async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM bots WHERE id=$1', [req.params.botId]);
+  const { rows } = await pool.query('SELECT * FROM whatsapp_bots WHERE id=$1', [req.params.botId]);
   const bot = rows[0];
   if (!bot) return res.status(404).send('Not found');
   await startBot(bot);

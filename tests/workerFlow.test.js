@@ -69,7 +69,7 @@ describe('worker message flow', () => {
     const db = require('../src/db');
     db.query.mockReset();
     db.query.mockImplementation(async text => {
-      if (text.startsWith('SELECT * FROM bots WHERE id=$1')) {
+      if (text.startsWith('SELECT * FROM whatsapp_bots WHERE id=$1')) {
         return { rows: [{ id: 1, organization_id: 1, assistant_id: 'a1' }] };
       }
       if (text.startsWith('SELECT working_hours_start')) {

@@ -61,7 +61,7 @@ async function ensureSocketOpen (botId) {
 
   let botRow;
   try {
-    const { rows } = await pool.query('SELECT * FROM bots WHERE id=$1', [botId]);
+    const { rows } = await pool.query('SELECT * FROM whatsapp_bots WHERE id=$1', [botId]);
     botRow = rows[0];
   } catch (err) {
     logger.error(`Failed to load bot ${botId} for reconnection:`, err);
