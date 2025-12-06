@@ -3,9 +3,9 @@ exports.shorthands = undefined;
 
 exports.up = pgm => {
   pgm.createTable('whatsapp_bots', {
-    id: 'id',
+    id: { type: 'bigserial', primaryKey: true },
     organization_id: {
-      type: 'integer',
+      type: 'bigint',
       notNull: true,
       references: 'organizations(id)',
       onDelete: 'CASCADE'
@@ -14,8 +14,8 @@ exports.up = pgm => {
     name: { type: 'text' },
     phone: { type: 'text' },
     status: { type: 'text' },
-    created_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') }
+    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') }
   }, { ifNotExists: true });
 
   pgm.createIndex('whatsapp_bots', 'organization_id', { ifNotExists: true });
@@ -42,9 +42,9 @@ exports.up = pgm => {
 
 exports.down = pgm => {
   pgm.createTable('bots', {
-    id: 'id',
+    id: { type: 'bigserial', primaryKey: true },
     organization_id: {
-      type: 'integer',
+      type: 'bigint',
       references: 'organizations(id)',
       onDelete: 'CASCADE'
     },
@@ -52,8 +52,8 @@ exports.down = pgm => {
     name: { type: 'text' },
     phone: { type: 'text' },
     status: { type: 'text' },
-    created_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') }
+    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') }
   }, { ifNotExists: true });
 
   pgm.createIndex('bots', 'organization_id', { ifNotExists: true });

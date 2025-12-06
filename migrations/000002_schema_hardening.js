@@ -4,7 +4,7 @@ exports.shorthands = undefined;
 exports.up = pgm => {
   // Organizations hardening
   pgm.addColumn('organizations', {
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') }
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') }
   });
   pgm.createIndex('organizations', 'name', { unique: true, ifNotExists: true });
   pgm.createIndex('organizations', 'phone', {
@@ -22,7 +22,7 @@ exports.up = pgm => {
   pgm.addColumns('documents', {
     checksum: { type: 'text' },
     source_url: { type: 'text' },
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') }
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') }
   });
   pgm.createIndex('documents', ['organization_id', 'file_id'], {
     unique: true,
@@ -33,11 +33,11 @@ exports.up = pgm => {
 
   // Conversations escalation context and dedupe
   pgm.addColumns('conversations', {
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    last_message_at: { type: 'timestamp' },
-    escalated_at: { type: 'timestamp' },
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    last_message_at: { type: 'timestamptz' },
+    escalated_at: { type: 'timestamptz' },
     escalated_by: {
-      type: 'integer',
+      type: 'bigint',
       references: 'users(id)',
       onDelete: 'SET NULL'
     }
@@ -58,8 +58,8 @@ exports.up = pgm => {
   // Scheduled messages delivery feedback
   pgm.addColumns('scheduled_messages', {
     status: { type: 'text', notNull: true, default: pgm.func("'pending'") },
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    last_attempt_at: { type: 'timestamp' },
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    last_attempt_at: { type: 'timestamptz' },
     error: { type: 'text' }
   });
   pgm.createIndex('scheduled_messages', ['organization_id', 'phone', 'send_at'], {
@@ -69,8 +69,8 @@ exports.up = pgm => {
 
   // Usage stats aggregation periods
   pgm.addColumns('usage_stats', {
-    period_start: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    period_end: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
+    period_start: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    period_end: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
     run_count: { type: 'integer', notNull: true, default: 0 },
     total_cost: { type: 'numeric', notNull: true, default: 0 }
   });
@@ -82,7 +82,7 @@ exports.up = pgm => {
   // Conversation stats traceability
   pgm.addColumns('conversation_stats', {
     message_id: {
-      type: 'integer',
+      type: 'bigint',
       references: 'messages(id)',
       onDelete: 'CASCADE'
     }
@@ -93,14 +93,14 @@ exports.up = pgm => {
   // Unanswered question routing
   pgm.addColumns('unanswered_questions', {
     organization_id: {
-      type: 'integer',
+      type: 'bigint',
       references: 'organizations(id)',
       onDelete: 'CASCADE'
     },
     handled: { type: 'boolean', notNull: true, default: false },
-    handled_at: { type: 'timestamp' },
+    handled_at: { type: 'timestamptz' },
     handled_by: {
-      type: 'integer',
+      type: 'bigint',
       references: 'users(id)',
       onDelete: 'SET NULL'
     }
@@ -111,11 +111,11 @@ exports.up = pgm => {
   pgm.dropConstraint('faq_suggestions', 'faq_suggestions_question_key', { ifExists: true });
   pgm.addColumns('faq_suggestions', {
     organization_id: {
-      type: 'integer',
+      type: 'bigint',
       references: 'organizations(id)',
       onDelete: 'CASCADE'
     },
-    last_suggested_at: { type: 'timestamp' }
+    last_suggested_at: { type: 'timestamptz' }
   });
   pgm.createIndex('faq_suggestions', ['organization_id', 'question'], {
     unique: true,
@@ -123,22 +123,22 @@ exports.up = pgm => {
   });
 
   // Bot + user auditing
-  pgm.addColumn('bots', {
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') }
+  pgm.addColumn('whatsapp_bots', {
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') }
   });
-  pgm.alterColumn('bots', 'organization_id', { notNull: true });
+  pgm.alterColumn('whatsapp_bots', 'organization_id', { notNull: true });
 
   pgm.addColumns('users', {
-    created_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('now()') },
-    last_login_at: { type: 'timestamp' }
+    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
+    last_login_at: { type: 'timestamptz' }
   });
 };
 
 exports.down = pgm => {
   pgm.dropColumns('users', ['last_login_at', 'updated_at', 'created_at']);
-  pgm.alterColumn('bots', 'organization_id', { notNull: false });
-  pgm.dropColumn('bots', 'updated_at');
+  pgm.alterColumn('whatsapp_bots', 'organization_id', { notNull: false });
+  pgm.dropColumn('whatsapp_bots', 'updated_at');
 
   pgm.dropIndex('faq_suggestions', ['organization_id', 'question'], { ifExists: true });
   pgm.dropColumn('faq_suggestions', 'last_suggested_at');

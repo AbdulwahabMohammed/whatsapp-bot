@@ -1,7 +1,5 @@
 const { Client } = require('pg');
-const Redis = require('ioredis');
-
-const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+const { createRedisClient, redisUrl } = require('../redisConfig');
 
 function getPgConfig () {
   const config = {
@@ -23,7 +21,7 @@ function getPgConfig () {
 
 async function testRedis () {
   console.log(`Testing Redis at ${redisUrl}`);
-  const redis = new Redis(redisUrl, { lazyConnect: true });
+  const redis = createRedisClient({ url: redisUrl, lazyConnect: true });
 
   try {
     await redis.connect();

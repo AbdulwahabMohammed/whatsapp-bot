@@ -198,16 +198,20 @@
 - Override the host port by setting `APP_HOST_PORT` in `.env`; the app keeps listening on the internal `APP_PORT` (default `3001`).
 
 ## Database schema & initialization
-- المخطط المعتمد مذكور في `docs/schema.sql` ويتضمن الجداول الأساسية: organizations، users، whatsapp_bots، documents، conversations، messages، scheduled_messages، usage_stats، conversation_stats، unanswered_questions، faq_suggestions.
-- تهيئة قاعدة بيانات جديدة داخل Docker:
+- All tables are created via `migrations/*.js` using `BIGSERIAL` primary keys and `TIMESTAMPTZ` timestamps. Key relations:
+  - `organizations` own `whatsapp_bots`, `documents`, `conversations`, `scheduled_messages`, `usage_stats`, `unanswered_questions`, and `faq_suggestions` (CASCADE on delete where appropriate).
+  - `whatsapp_bots` are unique per organization/assistant/phone and track status + timestamps.
+  - `conversations` and `messages` cascade deletes with `conversation_stats` linked per message; `usage_stats` aggregate per organization.
+  - `users` may belong to an organization and store optional TOTP secrets.
+- Fresh Docker init:
   ```bash
-  docker compose up -d --build
+  docker compose up -d db redis
   docker compose run --rm migrate
-  ```
-- زرع بيانات تجريبية بعد التهيئة:
-  ```bash
   docker compose run --rm app npm run seed:demo
+  docker compose up -d
   ```
+- The seed script creates (or updates) a demo organization and WhatsApp bot; it is safe to re-run.
+- All Redis clients read `REDIS_URL` (defaults to `redis://redis:6379` in Docker).
 
 ## Getting started: first demo bot
 1. Start the stack:

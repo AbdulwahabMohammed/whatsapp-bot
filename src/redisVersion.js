@@ -1,4 +1,4 @@
-const Redis = require('ioredis');
+const { createRedisClient, redisUrl } = require('./redisConfig');
 
 const MIN_REDIS_VERSION = '6.2.0';
 
@@ -47,12 +47,9 @@ function parseVersionFromInfo (info) {
 }
 
 async function ensureRedisVersion (options = {}) {
-  const {
-    url = process.env.REDIS_URL || 'redis://redis:6379',
-    minVersion = MIN_REDIS_VERSION
-  } = options;
+  const { url = redisUrl, minVersion = MIN_REDIS_VERSION } = options;
 
-  const redis = new Redis(url, { lazyConnect: true });
+  const redis = createRedisClient({ url, lazyConnect: true });
 
   try {
     await redis.connect();
