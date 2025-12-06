@@ -27,3 +27,5 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+        env:
+          NODE_ENV: test

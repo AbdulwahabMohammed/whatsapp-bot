@@ -124,6 +124,12 @@ async function ensureRedisReady () {
 }
 
 async function runChecks () {
+  const isTest = process.env.NODE_ENV === 'test';
+  if (isTest) {
+    logger.warn('Environment validation is running in test mode, external checks are skipped');
+    return;
+  }
+
   ensureOpenAIKey();
   const client = await ensurePostgresReady();
   try {

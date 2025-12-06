@@ -18,12 +18,14 @@ jest.mock('../src/logger', () => ({
 
 describe('checkEnv', () => {
   const originalEnv = process.env;
+  const originalNodeEnv = process.env.NODE_ENV;
   let mockClient;
   let mockRedisInstance;
 
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    process.env.NODE_ENV = 'development';
     process.env.PGHOST = 'localhost';
     process.env.PGUSER = 'user';
     process.env.PGDATABASE = 'db';
@@ -63,6 +65,7 @@ describe('checkEnv', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   test('resolves when all services and auth folders are available', async () => {

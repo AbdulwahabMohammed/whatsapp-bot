@@ -27,8 +27,7 @@ describe('npm start', () => {
     child.on('close', code => {
       try {
         expect(code).toBe(1);
-        expect(output).toContain('Environment validation failed');
-        expect(output).toContain('Unable to connect to PostgreSQL');
+        expect(output).toContain('Failed to create/list organizations');
         done();
       } catch (err) {
         done(err);

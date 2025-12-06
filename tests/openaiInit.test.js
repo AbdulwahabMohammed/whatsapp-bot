@@ -1,4 +1,5 @@
 const ORIGINAL_API_KEY = process.env.OPENAI_API_KEY;
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 describe('OpenAI initialization guardrails', () => {
   afterEach(() => {
@@ -8,23 +9,31 @@ describe('OpenAI initialization guardrails', () => {
     } else {
       delete process.env.OPENAI_API_KEY;
     }
+    if (ORIGINAL_NODE_ENV) {
+      process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+    } else {
+      delete process.env.NODE_ENV;
+    }
     jest.clearAllMocks();
   });
 
   it('throws a descriptive error when the API key is missing', () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.NODE_ENV = 'development';
     jest.resetModules();
     expect(() => require('../src/openai')).toThrow('OPENAI_API_KEY is missing or invalid');
   });
 
   it('rejects short or malformed API keys', () => {
     process.env.OPENAI_API_KEY = 'sk-12345';
+    process.env.NODE_ENV = 'development';
     jest.resetModules();
     expect(() => require('../src/openai')).toThrow('OPENAI_API_KEY is missing or invalid');
   });
 
   it('allows chat module to load and return null when OpenAI is unavailable', async () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.NODE_ENV = 'development';
     jest.resetModules();
 
     const loggerMock = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
@@ -52,6 +61,7 @@ describe('OpenAI initialization guardrails', () => {
 
   it('surfaces configuration errors from the assistant module', async () => {
     delete process.env.OPENAI_API_KEY;
+    process.env.NODE_ENV = 'development';
     jest.resetModules();
 
     const loggerMock = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
