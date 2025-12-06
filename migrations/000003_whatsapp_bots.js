@@ -27,6 +27,19 @@ exports.up = pgm => {
     DO $$
     BEGIN
       IF to_regclass('public.bots') IS NOT NULL THEN
+        PERFORM 1
+        FROM (
+          SELECT organization_id, name
+          FROM bots
+          WHERE name IS NOT NULL
+          GROUP BY organization_id, name
+          HAVING COUNT(*) > 1
+        ) duplicates;
+
+        IF FOUND THEN
+          RAISE EXCEPTION USING MESSAGE = 'Migration aborted: duplicate bot names per organization exist in bots table. Resolve duplicates before running this migration to avoid data loss.';
+        END IF;
+
         INSERT INTO whatsapp_bots (id, organization_id, assistant_id, name, phone, status, created_at, updated_at)
         SELECT id, organization_id, assistant_id, name, phone, status, created_at, COALESCE(updated_at, created_at, NOW())
         FROM bots
