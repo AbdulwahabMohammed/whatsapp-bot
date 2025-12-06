@@ -12,6 +12,7 @@ const qrcode = require('qrcode-terminal');
 const logger = require('./logger');
 const { messageQueue } = require('./queue');
 const { connectionGauge, messageCounter } = require('./metrics');
+const { getAuthPath, ensureAuthBaseDir } = require('./paths');
 
 // Store bot state in memory
 const bots = new Map(); // botId -> { sock, status, orgId, assistantId }
@@ -38,7 +39,8 @@ async function startBot (bot, attempt = 0) {
 
   const MAX_RECONNECTS = parseInt(process.env.MAX_RECONNECTS || '5', 10);
 
-  const { state, saveCreds } = await useMultiFileAuthState(`auth-${botId}`);
+  ensureAuthBaseDir();
+  const { state, saveCreds } = await useMultiFileAuthState(getAuthPath(botId));
   const sock = makeWASocket({ auth: state });
   bots.set(botId, { ...bots.get(botId), sock });
 
@@ -146,7 +148,7 @@ async function startBot (bot, attempt = 0) {
         logger.warn(`Bot ${botId}: session error detected: ${err.message}`);
         stopBot(botId);
         try {
-          fs.rmSync(path.join(__dirname, `../auth-${botId}`), { recursive: true, force: true });
+          fs.rmSync(getAuthPath(botId), { recursive: true, force: true });
         } catch (e) {
           logger.error(`Failed to remove auth-${botId}:`, e);
         }

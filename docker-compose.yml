@@ -37,7 +37,10 @@ services:
       PGPASSWORD: ${PGPASSWORD:-password}
       PGDATABASE: ${PGDATABASE:-whatsapp_bot}
       PGPORT: ${PGPORT:-5432}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_URL: redis://redis:6379
+      WHATSAPP_AUTH_DIR: /app/whatsapp-auth
       NODE_ENV: development
     depends_on:
       db:
@@ -47,6 +50,8 @@ services:
     command: ['sh', '-c', 'npm run migrate && node src/admin.js']
     ports:
       - '${APP_HOST_PORT:-31371}:${APP_PORT:-3001}'
+    volumes:
+      - ./whatsapp-auth:/app/whatsapp-auth
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- "http://localhost:${APP_PORT:-3001}" || exit 1']
       interval: 10s
@@ -63,7 +68,10 @@ services:
       PGPASSWORD: ${PGPASSWORD:-password}
       PGDATABASE: ${PGDATABASE:-whatsapp_bot}
       PGPORT: ${PGPORT:-5432}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_URL: redis://redis:6379
+      WHATSAPP_AUTH_DIR: /app/whatsapp-auth
       NODE_ENV: development
     depends_on:
       db:
@@ -71,6 +79,8 @@ services:
       redis:
         condition: service_healthy
     command: ['sh', '-c', 'npm run migrate && node src/worker.js']
+    volumes:
+      - ./whatsapp-auth:/app/whatsapp-auth
     restart: unless-stopped
 
   migrate:
@@ -83,6 +93,8 @@ services:
       PGPASSWORD: ${PGPASSWORD:-password}
       PGDATABASE: ${PGDATABASE:-whatsapp_bot}
       PGPORT: ${PGPORT:-5432}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
     depends_on:

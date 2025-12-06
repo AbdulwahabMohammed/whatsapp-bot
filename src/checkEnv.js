@@ -1,9 +1,9 @@
 const fs = require('fs');
-const path = require('path');
 const dotenv = require('dotenv');
 const { Client } = require('pg');
 const logger = require('./logger');
 const { createRedisClient, redisUrl } = require('./redisConfig');
+const { getAuthPath, ensureAuthBaseDir } = require('./paths');
 
 dotenv.config();
 
@@ -70,17 +70,8 @@ async function ensurePostgresReady () {
   }
 }
 
-function hasAuthFolder (botId) {
-  const cwd = process.cwd();
-  const authPaths = [
-    path.join(cwd, `auth-${botId}`),
-    path.join(cwd, 'auth', String(botId))
-  ];
-
-  return authPaths.some(folderPath => fs.existsSync(folderPath));
-}
-
 async function ensureWhatsAppAuthFolders (client) {
+  const baseDir = ensureAuthBaseDir();
   let botsResult;
   try {
     botsResult = await client.query('SELECT id, name, phone FROM whatsapp_bots ORDER BY id');
@@ -100,21 +91,18 @@ async function ensureWhatsAppAuthFolders (client) {
     return;
   }
 
-  const missing = rows.filter(row => !hasAuthFolder(row.id));
-  if (!missing.length) {
-    return;
+  for (const bot of rows) {
+    const folderPath = getAuthPath(bot.id);
+    if (fs.existsSync(folderPath)) continue;
+
+    fs.mkdirSync(folderPath, { recursive: true });
+    const label = bot.name ? `${bot.name} (#${bot.id})` : bot.phone ? `${bot.phone} (#${bot.id})` : `bot #${bot.id}`;
+    logger.warn(
+      `Created missing WhatsApp auth directory for ${label} at ${folderPath}. Scan the QR to initialize this session.`
+    );
   }
 
-  const missingLabels = missing
-    .map(bot => (bot.name ? `${bot.name} (#${bot.id})` : bot.phone ? `${bot.phone} (#${bot.id})` : `bot #${bot.id}`))
-    .join(', ');
-  const missingFolders = missing.map(bot => `auth-${bot.id}`).join(', ');
-  const error = new Error(
-    `Missing WhatsApp auth folders (${missingFolders}). Ensure each bot session is mounted before starting the worker. Affected bots: ${missingLabels}.`
-  );
-  error.code = 'WHATSAPP_AUTH_MISSING';
-  error.missingBots = missing.map(bot => bot.id);
-  throw error;
+  logger.info(`WhatsApp auth base directory ready at ${baseDir}.`);
 }
 
 async function ensureRedisReady () {
