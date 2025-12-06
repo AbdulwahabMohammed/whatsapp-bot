@@ -2,33 +2,51 @@ version: '3.9'
 
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${PGUSER:-postgres}
       POSTGRES_PASSWORD: ${PGPASSWORD:-password}
       POSTGRES_DB: ${PGDATABASE:-whatsapp_bot}
     volumes:
       - db-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${PGUSER:-postgres}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
-  bot:
+  app:
     build: .
     env_file: .env
     environment:
       PGHOST: db
       REDIS_URL: redis://redis:6379
+      NODE_ENV: development
     depends_on:
-      - db
-      - redis
-    command: npm run whatsapp
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ['node', 'src/admin.js']
     ports:
-      - "${ADMIN_PORT:-3001}:3001"
+      - '${ADMIN_PORT:-3001}:3001'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   worker:
     build: .
@@ -36,10 +54,29 @@ services:
     environment:
       PGHOST: db
       REDIS_URL: redis://redis:6379
+      NODE_ENV: development
     depends_on:
-      - db
-      - redis
-    command: npm run worker
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ['node', 'src/worker.js']
+    restart: unless-stopped
+
+  migrate:
+    profiles: ['migrate']
+    build: .
+    env_file: .env
+    environment:
+      PGHOST: db
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ['npm', 'run', 'migrate']
 
 volumes:
   db-data:
