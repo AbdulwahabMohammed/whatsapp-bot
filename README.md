@@ -175,23 +175,19 @@
 يجب على كل مساهم تفقد هذا الملف عند بدء أي مهمة أو مراجعة،
 ثم حذف محتواه بالكامل بعد تنفيذ جميع الملاحظات.
 
-## استخدام Docker
-يوفر المشروع ملفات `Dockerfile` و`docker-compose.yml` لتشغيل البوت داخل حاويات.
-
-1. انسخ `.env.example` إلى `.env` وعدل قيم متغيرات البيئة مثل مفاتيح OpenAI وإعدادات PostgreSQL،
-   ولا تنس تعيين `SESSION_SECRET` بقيمة عشوائية غير "secret"؛ سيمنع الخادم بدء التشغيل إن كانت القيمة فارغة أو غير آمنة.
-   عدد الرسائل قبل تلخيص المحادثة.
-2. طبّق الترحيلات داخل قاعدة البيانات (يمكن تكرار الأمر بأمان):
-  ```bash
-  docker compose run --rm bot npm run migrate
-  ```
-3. شغل الخدمات:
+## Running with Docker (mini)
+1. Copy `.env.example` to `.env` and fill required secrets (database, Redis, OpenAI, `SESSION_SECRET`).
+2. Start everything:
    ```bash
-   docker compose up --build
+   docker compose up -d --build
    ```
-سيُشغِّل هذا الأمر البوت والعامل والRedis في حاويات منفصلة.
-
-يعتمد `docker-compose.yml` على المتغيرات في ملف `.env` ويضبط متغير `PGHOST` تلقائيًا على `db`. تعمل قاعدة البيانات على المنفذ `5432` بينما تُعرض لوحة الإدارة على المنفذ المحدد في `ADMIN_PORT`.
+3. Open the admin UI at `http://localhost:3001` (or your `ADMIN_PORT`).
+4. Run migrations when needed:
+   ```bash
+   docker compose run --rm migrate
+   ```
+5. View logs: `docker compose logs -f app` or `docker compose logs -f worker`.
+6. Stop all services: `docker compose down`.
 
 ## الرخصة
 هذا المشروع موزع وفق رخصة MIT، ويمكنك الاطلاع على نص الرخصة في ملف [LICENSE](LICENSE).
