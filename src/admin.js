@@ -46,6 +46,13 @@ function isApiAuthDisabled (req) {
   return apiAuthBypass && isApiRequest(req);
 }
 
+function getUserContext (req) {
+  return req.user || {
+    role: req.session.role,
+    organization_id: req.session.organization_id
+  };
+}
+
 function jsonError (res, status, error, message) {
   return res.status(status).json({ error, message: message || error });
 }
@@ -167,15 +174,16 @@ function parsePagination (query) {
 }
 
 function buildOrgFilters (req) {
+  const { role, organization_id } = getUserContext(req);
   const conditions = [];
   const params = [];
   let idx = 1;
   const search = (req.query.search || '').trim().toLowerCase();
   const status = (req.query.status || 'all').toLowerCase();
 
-  if (req.session.role !== 'admin') {
+  if (!isApiAuthDisabled(req) && role !== 'admin') {
     conditions.push(`id=$${idx++}`);
-    params.push(req.session.organization_id);
+    params.push(organization_id);
   }
 
   if (search) {
@@ -237,6 +245,7 @@ function requireLogin (req, res, next) {
 
 function apiAuthMiddleware (req, res, next) {
   if (!req.isApiRequest) return next();
+  if (req.path.startsWith('/auth')) return next();
   if (isApiAuthDisabled(req)) return next();
   if (req.session.user) {
     req.user = {
