@@ -114,7 +114,8 @@ describe('checkEnv', () => {
     expect(mockRedisInstance.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  test('throws when WhatsApp auth folders are missing', async () => {
+  test('warns when WhatsApp auth folders are missing', async () => {
+    const logger = require('../src/logger');
     mockClient.query.mockImplementation(async sql => {
       if (sql === 'SELECT 1') {
         return { rows: [] };
@@ -127,6 +128,7 @@ describe('checkEnv', () => {
     mockFsModule.existsSync.mockReturnValue(false);
 
     const { checkEnv } = require('../src/checkEnv');
-    await expect(checkEnv()).rejects.toThrow('Missing WhatsApp auth folders');
+    await expect(checkEnv()).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalled();
   });
 });
