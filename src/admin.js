@@ -224,7 +224,8 @@ function corsMiddleware (req, res, next) {
   res.header('Access-Control-Allow-Origin', origin);
   res.header('Vary', 'Origin');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With, X-CSRF-Token');
+  res.header('Access-Control-Expose-Headers', 'X-CSRF-Token');
   res.header('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') return res.sendStatus(204);
