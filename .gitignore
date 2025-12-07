@@ -4,3 +4,5 @@ auth
 auth-*
 logs/
 uploads/
+whatsapp-bot-frontend/dist
+whatsapp-bot-frontend/.env
