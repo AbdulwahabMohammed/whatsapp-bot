@@ -34,8 +34,15 @@ const {
   getBotStatus,
   events: botEvents
 } = require('./botManager');
+const {
+  apiAuthMiddleware,
+  loginHandler: apiLoginHandler,
+  logoutHandler: apiLogoutHandler,
+  meHandler: apiMeHandler
+} = require('./apiAuth');
 
 const sessionSecret = process.env.SESSION_SECRET;
+// When true, API routes skip legacy auth/role checks. Admin HTML stays protected.
 const apiAuthBypass = process.env.DISABLE_AUTH_FOR_API === 'true';
 
 function isApiRequest (req) {
@@ -243,7 +250,7 @@ function requireLogin (req, res, next) {
   res.redirect('/login');
 }
 
-function apiAuthMiddleware (req, res, next) {
+function legacyApiSessionAuth (req, res, next) {
   if (!req.isApiRequest) return next();
   if (req.path.startsWith('/auth')) return next();
   if (isApiAuthDisabled(req)) return next();
@@ -309,13 +316,10 @@ app.use(corsMiddleware);
 
 const apiRouter = express.Router();
 const apiAuthRouter = express.Router();
-// All API endpoints are now mounted under `/api` for the external frontend SPA (legacy paths remain as compatibility aliases).
+// All API endpoints are mounted under `/api` for the external frontend SPA (no HTML fallbacks).
 
-function registerApiRoute (method, path, handlers, legacyPaths = []) {
+function registerApiRoute (method, path, handlers) {
   apiRouter[method](path, ...handlers);
-  legacyPaths.forEach(legacyPath => {
-    app[method](legacyPath, corsMiddleware, ...handlers);
-  });
 }
 
 // expose Prometheus metrics without auth
@@ -345,19 +349,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-apiAuthRouter.post('/login', (req, res) => {
-  res.status(501).json({ error: 'not_implemented', message: 'API login not yet available' });
-});
-
-apiAuthRouter.post('/logout', (req, res) => {
-  res.status(501).json({ error: 'not_implemented', message: 'API logout not yet available' });
-});
-
-apiAuthRouter.post('/refresh', (req, res) => {
-  res.status(501).json({ error: 'not_implemented', message: 'API token refresh not yet available' });
-});
+apiAuthRouter.post('/login', apiLoginHandler);
+apiAuthRouter.post('/logout', apiLogoutHandler);
+apiAuthRouter.get('/me', apiMeHandler);
 
 apiRouter.use('/auth', apiAuthRouter);
+apiRouter.use(apiAuthMiddleware);
 
 async function broadcastStatus () {
   const queue = await getQueueLength();
@@ -380,11 +377,13 @@ async function broadcastStatus () {
 
 let statusInterval;
 
-app.get('/login', (req, res) => {
+const adminRouter = express.Router();
+
+adminRouter.get('/login', (req, res) => {
   res.render('login');
 });
 
-app.post('/login', async (req, res) => {
+adminRouter.post('/login', async (req, res) => {
   const { username, password, token } = req.body;
   const { rows } = await pool.query(
     'SELECT password_hash, role, totp_secret, organization_id FROM users WHERE username=$1',
@@ -415,7 +414,7 @@ app.post('/login', async (req, res) => {
   return res.redirect('/');
 });
 
-app.post('/setup-2fa', async (req, res) => {
+adminRouter.post('/setup-2fa', async (req, res) => {
   const { token } = req.body;
   const secret = req.session.temp_secret;
   const username = req.session.temp_user;
@@ -432,13 +431,13 @@ app.post('/setup-2fa', async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/logout', (req, res) => {
+adminRouter.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/login');
   });
 });
 
-app.get('/profile', requireLogin, async (req, res) => {
+adminRouter.get('/profile', requireLogin, async (req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT role, totp_secret FROM users WHERE username=$1',
@@ -456,7 +455,7 @@ app.get('/profile', requireLogin, async (req, res) => {
   }
 });
 
-app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
+adminRouter.get('/profile/setup-2fa', requireLogin, async (req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT totp_secret FROM users WHERE username=$1',
@@ -474,7 +473,7 @@ app.get('/profile/setup-2fa', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/profile/enable-2fa', requireLogin, async (req, res) => {
+adminRouter.post('/profile/enable-2fa', requireLogin, async (req, res) => {
   const { token } = req.body;
   const secret = req.session.temp_secret;
   const { rows } = await pool.query(
@@ -493,37 +492,37 @@ app.post('/profile/enable-2fa', requireLogin, async (req, res) => {
   res.redirect('/profile');
 });
 
-app.post('/profile/disable-2fa', requireLogin, async (req, res) => {
+adminRouter.post('/profile/disable-2fa', requireLogin, async (req, res) => {
   await pool.query('UPDATE users SET totp_secret=NULL WHERE username=$1', [req.session.user]);
   req.session.alert = { type: 'success', message: '2FA disabled' };
   res.redirect('/profile');
 });
 
-app.get('/stats', (req, res) => {
+adminRouter.get('/stats', (req, res) => {
   res.render('stats');
 });
 
-app.get('/dashboard', (req, res) => {
+adminRouter.get('/dashboard', (req, res) => {
   res.render('dashboard');
 });
 
-app.use('/api', apiAuthMiddleware, apiRouter);
+app.use('/api', legacyApiSessionAuth, apiRouter);
 
 // auth middleware for legacy/admin views
-app.use(requireLogin);
+adminRouter.use(requireLogin);
 
 function renderOrganizations (req, res) {
   res.render('organizations', { role: req.session.role });
 }
 
-app.get('/', requireEditor, renderOrganizations);
-app.get('/organizations', requireEditor, renderOrganizations);
+adminRouter.get('/', requireEditor, renderOrganizations);
+adminRouter.get('/organizations', requireEditor, renderOrganizations);
 
-app.get('/org/new', requireEditor, (req, res) => {
+adminRouter.get('/org/new', requireEditor, (req, res) => {
   res.render('newOrg');
 });
 
-app.post('/org/new', requireEditor, async (req, res) => {
+adminRouter.post('/org/new', requireEditor, async (req, res) => {
   const { name, phone, instructions, language, working_hours_start, working_hours_end } = req.body;
   await createOrganization(
     name,
@@ -690,7 +689,7 @@ registerApiRoute('post', '/organizations', [requireAdmin, createOrganizationHand
 registerApiRoute('put', '/organizations/:id', [requireEditor, requireOrgAccess, updateOrganizationHandler]);
 registerApiRoute('delete', '/organizations/:id', [requireEditor, requireOrgAccess, deactivateOrganizationHandler]);
 
-app.post('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.post('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
   const { instructions } = req.body;
   if (instructions !== undefined) {
     await pool.query('UPDATE organizations SET instructions=$1 WHERE id=$2', [instructions, req.params.id]);
@@ -699,7 +698,7 @@ app.post('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res)
   res.redirect('/');
 });
 
-app.get('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.get('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query('SELECT instructions FROM organizations WHERE id=$1', [req.params.id]);
   const instructions = rows[0]?.instructions || '';
   res.render('createAssistant', { orgId: req.params.id, instructions });
@@ -710,7 +709,7 @@ function wantsJson (req) {
   return req.isApiRequest || accept.includes('application/json');
 }
 
-app.get('/org/:id/upload', requireEditor, requireOrgAccess, (req, res) => {
+adminRouter.get('/org/:id/upload', requireEditor, requireOrgAccess, (req, res) => {
   res.render('upload', {
     orgId: req.params.id,
     error: null,
@@ -753,11 +752,10 @@ async function uploadOrganizationFileHandler (req, res) {
   }
 }
 
-registerApiRoute('post', '/organizations/:id/upload', [requireEditor, requireOrgAccess, uploadOrganizationFileHandler], [
-  '/org/:id/upload'
-]);
+registerApiRoute('post', '/organizations/:id/upload', [requireEditor, requireOrgAccess, uploadOrganizationFileHandler]);
+adminRouter.post('/org/:id/upload', requireEditor, requireOrgAccess, uploadOrganizationFileHandler);
 
-app.get('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.get('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT name, working_hours_start, working_hours_end FROM organizations WHERE id=$1',
     [req.params.id]
@@ -771,7 +769,7 @@ app.get('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
   });
 });
 
-app.post('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.post('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
   const { working_hours_start, working_hours_end } = req.body;
   await pool.query(
     'UPDATE organizations SET working_hours_start=$1, working_hours_end=$2 WHERE id=$3',
@@ -788,7 +786,7 @@ async function listBotsHandler (req, res) {
   res.json(rows);
 }
 
-app.get('/org/:orgId/bots/manage', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.get('/org/:orgId/bots/manage', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT id, name, assistant_id, status FROM whatsapp_bots WHERE organization_id=$1',
     [req.params.orgId]
@@ -796,19 +794,25 @@ app.get('/org/:orgId/bots/manage', requireEditor, requireOrgAccess, async (req, 
   res.render('bots', { orgId: req.params.orgId, bots: rows, role: req.session.role });
 });
 
-app.get('/org/:orgId/bots/new', requireEditor, requireOrgAccess, (req, res) => {
+adminRouter.get('/org/:orgId/bots/new', requireEditor, requireOrgAccess, (req, res) => {
   res.render('newBot', { orgId: req.params.orgId });
 });
 
-async function createBotHandler (req, res) {
-  const { assistant_id, name, phone } = req.body;
+async function createBotRecord (orgId, assistantId, name, phone) {
   const { rows } = await pool.query(
     'INSERT INTO whatsapp_bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-    [req.params.orgId, assistant_id, name || null, phone || null, 'stopped']
+    [orgId, assistantId, name || null, phone || null, 'stopped']
   );
-  if (req.isApiRequest || req.headers.accept === 'application/json') {
-    return res.json(rows[0]);
-  }
+  return rows[0];
+}
+
+async function createBotHandler (req, res) {
+  const bot = await createBotRecord(req.params.orgId, req.body.assistant_id, req.body.name, req.body.phone);
+  res.status(201).json(bot);
+}
+
+async function createBotAdminHandler (req, res) {
+  await createBotRecord(req.params.orgId, req.body.assistant_id, req.body.name, req.body.phone);
   res.redirect(`/org/${req.params.orgId}/bots/manage`);
 }
 
@@ -828,38 +832,48 @@ async function stopBotHandler (req, res) {
   res.json({ status: 'stopped' });
 }
 
+async function startBotAdminHandler (req, res) {
+  const { rows } = await pool.query('SELECT * FROM whatsapp_bots WHERE id=$1', [req.params.botId]);
+  const bot = rows[0];
+  if (!bot) return res.status(404).send('Not found');
+  await startBot(bot);
+  res.redirect(`/org/${bot.organization_id}/bots/manage`);
+}
+
+async function stopBotAdminHandler (req, res) {
+  stopBot(req.params.botId);
+  res.redirect('back');
+}
+
 async function botStatusHandler (req, res) {
   res.json({ status: getBotStatus(req.params.botId) });
 }
 
-registerApiRoute('get', '/organizations/:orgId/bots', [requireEditor, requireOrgAccess, listBotsHandler], [
-  '/org/:orgId/bots'
-]);
-registerApiRoute('post', '/organizations/:orgId/bots', [requireEditor, requireOrgAccess, createBotHandler], [
-  '/org/:orgId/bots'
-]);
-registerApiRoute('post', '/bots/:botId/start', [requireEditor, requireBotAccess, startBotHandler], [
-  '/bot/:botId/start'
-]);
-registerApiRoute('post', '/bots/:botId/stop', [requireEditor, requireBotAccess, stopBotHandler], [
-  '/bot/:botId/stop'
-]);
-registerApiRoute('get', '/bots/:botId/status', [requireEditor, requireBotAccess, botStatusHandler], [
-  '/bot/:botId/status'
-]);
+registerApiRoute('get', '/organizations/:orgId/bots', [requireEditor, requireOrgAccess, listBotsHandler]);
+registerApiRoute('post', '/organizations/:orgId/bots', [requireEditor, requireOrgAccess, createBotHandler]);
+registerApiRoute('post', '/bots/:botId/start', [requireEditor, requireBotAccess, startBotHandler]);
+registerApiRoute('post', '/bots/:botId/stop', [requireEditor, requireBotAccess, stopBotHandler]);
+registerApiRoute('get', '/bots/:botId/status', [requireEditor, requireBotAccess, botStatusHandler]);
+adminRouter.post('/org/:orgId/bots', requireEditor, requireOrgAccess, createBotAdminHandler);
+adminRouter.post('/bot/:botId/start', requireEditor, requireBotAccess, startBotAdminHandler);
+adminRouter.post('/bot/:botId/stop', requireEditor, requireBotAccess, stopBotAdminHandler);
+adminRouter.get('/bot/:botId/status', requireEditor, requireBotAccess, async (req, res) => {
+  const status = getBotStatus(req.params.botId);
+  res.json({ status });
+});
 
-app.get('/users', requireAdmin, async (req, res) => {
+adminRouter.get('/users', requireAdmin, async (req, res) => {
   const { rows } = await pool.query('SELECT id, username, role, organization_id FROM users ORDER BY id');
   const orgs = await listOrganizations();
   res.render('users', { users: rows, orgs });
 });
 
-app.get('/users/new', requireAdmin, async (req, res) => {
+adminRouter.get('/users/new', requireAdmin, async (req, res) => {
   const orgs = await listOrganizations();
   res.render('newUser', { orgs });
 });
 
-app.post('/users/new', requireAdmin, async (req, res) => {
+adminRouter.post('/users/new', requireAdmin, async (req, res) => {
   const { username, password, role, organization_id } = req.body;
   const hash = await bcrypt.hash(password, 10);
   await pool.query(
@@ -869,19 +883,19 @@ app.post('/users/new', requireAdmin, async (req, res) => {
   res.redirect('/users');
 });
 
-app.post('/users/:id/role', requireAdmin, async (req, res) => {
+adminRouter.post('/users/:id/role', requireAdmin, async (req, res) => {
   const { role, organization_id } = req.body;
   await pool.query('UPDATE users SET role=$1, organization_id=$2 WHERE id=$3', [role, organization_id || null, req.params.id]);
   res.redirect('/users');
 });
 
-app.post('/users/:id/disable-2fa', requireAdmin, async (req, res) => {
+adminRouter.post('/users/:id/disable-2fa', requireAdmin, async (req, res) => {
   await pool.query('UPDATE users SET totp_secret=NULL WHERE id=$1', [req.params.id]);
   req.session.alert = { type: 'success', message: '2FA disabled for user' };
   res.redirect('/users');
 });
 
-app.get('/schedule/new', requireEditor, async (req, res) => {
+adminRouter.get('/schedule/new', requireEditor, async (req, res) => {
   let orgs = await listOrganizations();
   if (req.session.role !== 'admin') {
     orgs = orgs.filter(o => o.id === req.session.organization_id);
@@ -889,7 +903,7 @@ app.get('/schedule/new', requireEditor, async (req, res) => {
   res.render('newSchedule', { orgs });
 });
 
-app.post('/schedule/new', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.post('/schedule/new', requireEditor, requireOrgAccess, async (req, res) => {
   const { organization_id, phone, text, send_at } = req.body;
   await pool.query(
     'INSERT INTO scheduled_messages (organization_id, phone, text, send_at) VALUES ($1,$2,$3,$4)',
@@ -898,7 +912,7 @@ app.post('/schedule/new', requireEditor, requireOrgAccess, async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/broadcast', requireEditor, async (req, res) => {
+adminRouter.get('/broadcast', requireEditor, async (req, res) => {
   let orgs = await listOrganizations();
   if (req.session.role !== 'admin') {
     orgs = orgs.filter(o => o.id === req.session.organization_id);
@@ -906,7 +920,7 @@ app.get('/broadcast', requireEditor, async (req, res) => {
   res.render('broadcast', { orgs });
 });
 
-app.post('/broadcast', requireEditor, requireOrgAccess, async (req, res) => {
+adminRouter.post('/broadcast', requireEditor, requireOrgAccess, async (req, res) => {
   const { organization_id, phones, text } = req.body;
   let list = [];
   if (phones) {
@@ -929,11 +943,11 @@ app.post('/broadcast', requireEditor, requireOrgAccess, async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/messages', requireEditor, (req, res) => {
+adminRouter.get('/messages', requireEditor, (req, res) => {
   res.render('messages');
 });
 
-app.post('/messages', requireEditor, async (req, res) => {
+adminRouter.post('/messages', requireEditor, async (req, res) => {
   const { phone, from, to, export: exportType } = req.body;
   const conditions = [];
   const params = [];
@@ -1008,12 +1022,12 @@ app.post('/messages', requireEditor, async (req, res) => {
   res.render('messageResults', { results: rows, summaries, phone, from, to });
 });
 
-app.post('/conversations/:id/escalate', requireAdmin, async (req, res) => {
+adminRouter.post('/conversations/:id/escalate', requireAdmin, async (req, res) => {
   await pool.query('UPDATE conversations SET escalated=TRUE WHERE id=$1', [req.params.id]);
   res.redirect('back');
 });
 
-app.get('/usage', requireAdmin, async (req, res) => {
+adminRouter.get('/usage', requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
     `SELECT o.name, DATE(u.created_at) AS date,
             SUM(u.tokens_prompt) AS tokens_prompt,
@@ -1026,7 +1040,7 @@ app.get('/usage', requireAdmin, async (req, res) => {
   res.render('usage', { stats: rows });
 });
 
-app.get('/analytics', requireAdmin, async (req, res) => {
+adminRouter.get('/analytics', requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
     `SELECT DATE(created_at) AS date, AVG(response_time_ms) AS avg_response
        FROM conversation_stats
@@ -1036,25 +1050,28 @@ app.get('/analytics', requireAdmin, async (req, res) => {
   res.render('analytics', { stats: rows });
 });
 
-app.get('/unanswered', requireAdmin, async (req, res) => {
+adminRouter.get('/unanswered', requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT phone, message, created_at FROM unanswered_questions ORDER BY created_at DESC'
   );
   res.render('unanswered', { alerts: rows });
 });
 
-app.get('/faq', requireAdmin, async (req, res) => {
+adminRouter.get('/faq', requireAdmin, async (req, res) => {
   const { rows } = await pool.query(
     'SELECT id, question, count FROM faq_suggestions ORDER BY count DESC'
   );
   res.render('faq', { faqs: rows });
 });
 
-app.post('/faq/:id/delete', requireAdmin, async (req, res) => {
+adminRouter.post('/faq/:id/delete', requireAdmin, async (req, res) => {
   await pool.query('DELETE FROM faq_suggestions WHERE id=$1', [req.params.id]);
   req.session.alert = { type: 'success', message: 'FAQ entry deleted' };
   res.redirect('/faq');
 });
+
+app.use('/admin', adminRouter);
+app.use('/', adminRouter);
 
 app.use((err, req, res, next) => {
   if (err && err.code === 'EBADCSRFTOKEN') {
