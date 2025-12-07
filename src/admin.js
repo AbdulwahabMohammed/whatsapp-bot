@@ -208,7 +208,13 @@ function buildAllowedOrigins () {
   envOrigins.forEach(origin => origins.add(origin));
 
   if (process.env.NODE_ENV !== 'production') {
-    ['http://localhost:3000', 'http://localhost:4173', 'http://localhost:5173'].forEach(origin => origins.add(origin));
+    [
+      'http://localhost',
+      'http://127.0.0.1',
+      'http://localhost:3000',
+      'http://localhost:4173',
+      'http://localhost:5173'
+    ].forEach(origin => origins.add(origin));
   }
 
   return origins;
@@ -231,9 +237,10 @@ function corsMiddleware (req, res, next) {
   next();
 }
 
+app.use(corsMiddleware);
+
 const apiRouter = express.Router();
 // All API endpoints are now mounted under `/api` for the external frontend SPA (legacy paths remain as compatibility aliases).
-apiRouter.use(corsMiddleware);
 
 function registerApiRoute (method, path, handlers, legacyPaths = []) {
   apiRouter[method](path, ...handlers);
@@ -258,6 +265,14 @@ botEvents.on('update', data => {
   const payload = JSON.stringify(data);
   wsClients.forEach(client => {
     try { client.send(payload); } catch (e) {}
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
   });
 });
 

@@ -77,17 +77,16 @@ async function ensureWhatsAppAuthFolders (client) {
     botsResult = await client.query('SELECT id, name, phone FROM whatsapp_bots ORDER BY id');
   } catch (error) {
     if (error.code === '42P01') {
-      const missingTableError = new Error(
-        'Table "whatsapp_bots" is missing. Run the migrations (npm run migrate or docker compose run --rm migrate) before starting the app.'
+      logger.warn(
+        'Table "whatsapp_bots" is missing. Run the migrations (npm run migrate or docker compose run --rm migrate) to enable bot management.'
       );
-      missingTableError.code = 'TABLES_NOT_MIGRATED';
-      missingTableError.cause = error;
-      throw missingTableError;
+      return;
     }
     throw error;
   }
   const { rows } = botsResult;
   if (!rows.length) {
+    logger.warn('No bots found in database. Add a bot to enable WhatsApp connections.');
     return;
   }
 
@@ -100,11 +99,8 @@ async function ensureWhatsAppAuthFolders (client) {
   }
 
   if (missing.length) {
-    const error = new Error('Missing WhatsApp auth folders');
-    error.code = 'MISSING_WHATSAPP_AUTH_FOLDERS';
-    error.details = missing;
-    logger.error('Missing WhatsApp auth folders', { missing });
-    throw error;
+    logger.warn('Missing WhatsApp auth folders', { missing });
+    return;
   }
 
   logger.info(`WhatsApp auth base directory ready at ${baseDir}.`);

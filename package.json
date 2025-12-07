@@ -14,7 +14,7 @@
     "test:db": "node src/scripts/testConnectivity.js --db",
     "test:env": "node src/scripts/testConnectivity.js",
     "migrate": "node src/initDb.js",
-    "seed:demo": "node src/scripts/seedDemoBot.js",
+    "seed:demo": "node src/seedDemo.js",
     "worker": "node src/worker.js",
     "lint": "eslint \"src/**\" \"tests/**\""
   },

@@ -30,16 +30,17 @@ describe('initDb script', () => {
       error: jest.fn(),
       warn: jest.fn()
     };
-    const runner = jest.fn().mockResolvedValue(undefined);
+    const runner = jest.fn().mockResolvedValue([]);
     const hash = jest.fn().mockResolvedValue('hashed');
     const clientConnect = jest.fn().mockResolvedValue(undefined);
     const clientEnd = jest.fn().mockResolvedValue(undefined);
+    const clientQuery = jest.fn().mockResolvedValue({ rows: [] });
 
     jest.doMock('../src/db', () => pool);
     jest.doMock('../src/logger', () => logger);
     jest.doMock('bcrypt', () => ({ hash }));
     jest.doMock('node-pg-migrate', () => ({ runner }));
-    jest.doMock('pg', () => ({ Client: jest.fn(() => ({ connect: clientConnect, end: clientEnd })) }));
+    jest.doMock('pg', () => ({ Client: jest.fn(() => ({ connect: clientConnect, end: clientEnd, query: clientQuery })) }));
 
     let initDb;
     jest.isolateModules(() => {
@@ -48,6 +49,7 @@ describe('initDb script', () => {
 
     await initDb.main();
 
+    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS pgmigrations'));
     expect(runner).toHaveBeenCalledTimes(1);
     expect(clientConnect).toHaveBeenCalledTimes(1);
     expect(clientEnd).toHaveBeenCalledTimes(1);
@@ -74,12 +76,13 @@ describe('initDb script', () => {
     const runner = jest.fn().mockRejectedValue(runnerError);
     const clientConnect = jest.fn().mockResolvedValue(undefined);
     const clientEnd = jest.fn().mockResolvedValue(undefined);
+    const clientQuery = jest.fn().mockResolvedValue({ rows: [] });
 
     jest.doMock('../src/db', () => pool);
     jest.doMock('../src/logger', () => logger);
     jest.doMock('bcrypt', () => ({ hash: jest.fn().mockResolvedValue('hashed') }));
     jest.doMock('node-pg-migrate', () => ({ runner }));
-    jest.doMock('pg', () => ({ Client: jest.fn(() => ({ connect: clientConnect, end: clientEnd })) }));
+    jest.doMock('pg', () => ({ Client: jest.fn(() => ({ connect: clientConnect, end: clientEnd, query: clientQuery })) }));
 
     let initDb;
     jest.isolateModules(() => {
@@ -88,6 +91,7 @@ describe('initDb script', () => {
 
     await initDb.main();
 
+    expect(clientQuery).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS pgmigrations'));
     expect(runner).toHaveBeenCalledTimes(1);
     expect(clientConnect).toHaveBeenCalledTimes(1);
     expect(clientEnd).toHaveBeenCalledTimes(1);

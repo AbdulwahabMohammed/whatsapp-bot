@@ -18,7 +18,15 @@ async function runMigrations () {
   await client.connect();
 
   try {
-    await runner({
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pgmigrations (
+        id bigserial PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        run_on timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+
+    const executedMigrations = await runner({
       dbClient: client,
       dir: path.resolve(__dirname, '..', 'migrations'),
       direction: 'up',
@@ -26,6 +34,12 @@ async function runMigrations () {
       migrationsTable: 'pgmigrations',
       logger
     });
+
+    if (!executedMigrations.length) {
+      logger.info('No migrations to run');
+    } else {
+      logger.info(`Applied ${executedMigrations.length} migration(s)`);
+    }
   } finally {
     await client.end();
   }
