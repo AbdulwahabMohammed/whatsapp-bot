@@ -1,7 +1,8 @@
 jest.mock('dotenv', () => ({ config: jest.fn() }));
 
 const mockFsModule = {
-  existsSync: jest.fn()
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn()
 };
 jest.mock('fs', () => mockFsModule);
 
@@ -35,6 +36,7 @@ describe('checkEnv', () => {
     process.env.OPENAI_API_KEY = 'test-api-key';
 
     mockFsModule.existsSync.mockReset();
+    mockFsModule.mkdirSync.mockReset();
 
     mockClient = {
       connect: jest.fn().mockResolvedValue(),

@@ -21,7 +21,7 @@ async function runMigrationsTwice (client) {
     dir: path.resolve(__dirname, '..', 'migrations'),
     direction: 'up',
     migrationsTable: 'pgmigrations',
-    noLock: false,
+    noLock: true,
     logger: SILENT_LOGGER
   };
 
@@ -32,6 +32,15 @@ async function runMigrationsTwice (client) {
 describe('database migrations', () => {
   it('are idempotent across repeated executions', async () => {
     const db = newDb();
+    db.public.registerFunction({
+      name: 'regexp_replace',
+      args: ['text', 'text', 'text', 'text'],
+      returns: 'text',
+      implementation: (value, pattern, replacement, flags) => {
+        const regex = new RegExp(pattern, flags || 'g');
+        return String(value || '').replace(regex, replacement);
+      }
+    });
     const { Client } = db.adapters.createPg();
     const client = new Client();
 
