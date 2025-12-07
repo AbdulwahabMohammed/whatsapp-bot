@@ -1,0 +1,4 @@
+- API base path: all programmatic routes are served under `/api` (compatibility aliases kept for legacy paths).
+- CORS is centralized in `src/admin.js` using `FRONTEND_ORIGIN`/`FRONTEND_ORIGIN_ADDITIONAL` (dev also allows localhost ports when NODE_ENV is not production).
+- Use the backend host/port from `APP_PORT` (inside Docker use `http://app:${APP_PORT}/api`, default 3001; from the host use the `APP_HOST_PORT` mapping, default `http://localhost:31371/api`).
+- Session/CSRF handling remains unchanged; APIs still rely on the same login/session flow.
