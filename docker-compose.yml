@@ -104,16 +104,5 @@ services:
         condition: service_healthy
     command: ['npm', 'run', 'migrate']
 
-  frontend:
-    build:
-      context: ../whatsapp-bot-frontend
-    environment:
-      API_BASE_URL: ${API_BASE_URL:-http://app:3000}
-    depends_on:
-      app:
-        condition: service_started
-    ports:
-      - '${FRONTEND_HOST_PORT:-4173}:80'
-
 volumes:
   db-data:
