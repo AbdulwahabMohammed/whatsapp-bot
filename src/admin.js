@@ -1,3 +1,4 @@
+// Admin/JSON HTTP server (Express + express-ws) runs on ADMIN_PORT/APP_PORT (default 3001), serves admin HTML, websockets (/ws), metrics (/metrics), and programmatic APIs mounted under /api (see router below).
 const express = require('express');
 const expressWs = require('express-ws');
 const path = require('path');
@@ -185,6 +186,7 @@ async function requireBotAccess (req, res, next) {
 }
 
 function requireLogin (req, res, next) {
+  if (req.method === 'OPTIONS') return next();
   if (req.session.user) return next();
   res.redirect('/login');
 }
@@ -197,6 +199,48 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+function buildAllowedOrigins () {
+  const origins = new Set();
+  const envOrigins = [process.env.FRONTEND_ORIGIN, process.env.FRONTEND_ORIGIN_ADDITIONAL]
+    .filter(Boolean)
+    .flatMap(value => value.split(',').map(item => item.trim()).filter(Boolean));
+  envOrigins.forEach(origin => origins.add(origin));
+
+  if (process.env.NODE_ENV !== 'production') {
+    ['http://localhost:3000', 'http://localhost:4173', 'http://localhost:5173'].forEach(origin => origins.add(origin));
+  }
+
+  return origins;
+}
+
+const allowedOrigins = buildAllowedOrigins();
+
+// FRONTEND_ORIGIN/FRONTEND_ORIGIN_ADDITIONAL control which origins are allowed to call the API; centralized CORS middleware below.
+function corsMiddleware (req, res, next) {
+  const origin = req.headers.origin;
+  if (!origin || !allowedOrigins.has(origin)) return next();
+
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Vary', 'Origin');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+}
+
+const apiRouter = express.Router();
+// All API endpoints are now mounted under `/api` for the external frontend SPA (legacy paths remain as compatibility aliases).
+apiRouter.use(corsMiddleware);
+
+function registerApiRoute (method, path, handlers, legacyPaths = []) {
+  apiRouter[method](path, ...handlers);
+  legacyPaths.forEach(legacyPath => {
+    app[method](legacyPath, corsMiddleware, ...handlers);
+  });
+}
 
 // expose Prometheus metrics without auth
 app.get('/metrics', async (req, res) => {
@@ -368,6 +412,8 @@ app.get('/dashboard', (req, res) => {
 // auth middleware
 app.use(requireLogin);
 
+app.use('/api', apiRouter);
+
 function renderOrganizations (req, res) {
   res.render('organizations', { role: req.session.role });
 }
@@ -392,7 +438,7 @@ app.post('/org/new', requireEditor, async (req, res) => {
   res.redirect('/');
 });
 
-app.get('/api/organizations', requireEditor, async (req, res) => {
+async function listOrganizationsHandler (req, res) {
   try {
     const { page, pageSize } = parsePagination(req.query);
     const { where, params } = buildOrgFilters(req);
@@ -407,9 +453,9 @@ app.get('/api/organizations', requireEditor, async (req, res) => {
     logger.error('Failed to list organizations', error);
     res.status(500).json({ error: 'Failed to list organizations' });
   }
-});
+}
 
-app.get('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, res) => {
+async function getOrganizationHandler (req, res) {
   try {
     const { rows } = await pool.query(
       'SELECT id, name, slug, phone, contact_email, contact_phone, status, language, instructions, working_hours_start, working_hours_end, description FROM organizations WHERE id=$1',
@@ -421,9 +467,9 @@ app.get('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, r
     logger.error(`Failed to load organization ${req.params.id}`, error);
     res.status(500).json({ error: 'Failed to load organization' });
   }
-});
+}
 
-app.post('/api/organizations', requireAdmin, async (req, res) => {
+async function createOrganizationHandler (req, res) {
   const {
     name,
     slug,
@@ -469,9 +515,9 @@ app.post('/api/organizations', requireAdmin, async (req, res) => {
     const message = isConflict ? 'Organization already exists' : 'Failed to create organization';
     res.status(statusCode).json({ error: message });
   }
-});
+}
 
-app.put('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, res) => {
+async function updateOrganizationHandler (req, res) {
   const updates = [];
   const params = [];
   let idx = 1;
@@ -524,9 +570,9 @@ app.put('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, r
     logger[isConflict ? 'warn' : 'error'](`Failed to update organization ${req.params.id}`, error);
     res.status(isConflict ? 409 : 500).json({ error: isConflict ? 'Organization already exists' : 'Failed to update organization' });
   }
-});
+}
 
-app.delete('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, res) => {
+async function deactivateOrganizationHandler (req, res) {
   try {
     const { rows } = await pool.query(
       'UPDATE organizations SET status=$1, updated_at=now() WHERE id=$2 RETURNING *',
@@ -538,7 +584,13 @@ app.delete('/api/organizations/:id', requireEditor, requireOrgAccess, async (req
     logger.error(`Failed to delete organization ${req.params.id}`, error);
     res.status(500).json({ error: 'Failed to delete organization' });
   }
-});
+}
+
+registerApiRoute('get', '/organizations', [requireEditor, listOrganizationsHandler]);
+registerApiRoute('get', '/organizations/:id', [requireEditor, requireOrgAccess, getOrganizationHandler]);
+registerApiRoute('post', '/organizations', [requireAdmin, createOrganizationHandler]);
+registerApiRoute('put', '/organizations/:id', [requireEditor, requireOrgAccess, updateOrganizationHandler]);
+registerApiRoute('delete', '/organizations/:id', [requireEditor, requireOrgAccess, deactivateOrganizationHandler]);
 
 app.post('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {
   const { instructions } = req.body;
@@ -569,7 +621,7 @@ app.get('/org/:id/upload', requireEditor, requireOrgAccess, (req, res) => {
   });
 });
 
-app.post('/org/:id/upload', requireEditor, requireOrgAccess, async (req, res) => {
+async function uploadOrganizationFileHandler (req, res) {
   const { filePath } = req.body;
   try {
     const result = await upload(req.params.id, filePath);
@@ -601,7 +653,11 @@ app.post('/org/:id/upload', requireEditor, requireOrgAccess, async (req, res) =>
       maxFileSize: formatFileSize(MAX_FILE_SIZE_BYTES)
     });
   }
-});
+}
+
+registerApiRoute('post', '/organizations/:id/upload', [requireEditor, requireOrgAccess, uploadOrganizationFileHandler], [
+  '/org/:id/upload'
+]);
 
 app.get('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
@@ -626,13 +682,13 @@ app.post('/org/:id/hours', requireEditor, requireOrgAccess, async (req, res) => 
   res.redirect('/');
 });
 
-app.get('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
+async function listBotsHandler (req, res) {
   const { rows } = await pool.query(
     'SELECT id, name, assistant_id, status FROM whatsapp_bots WHERE organization_id=$1',
     [req.params.orgId]
   );
   res.json(rows);
-});
+}
 
 app.get('/org/:orgId/bots/manage', requireEditor, requireOrgAccess, async (req, res) => {
   const { rows } = await pool.query(
@@ -646,7 +702,7 @@ app.get('/org/:orgId/bots/new', requireEditor, requireOrgAccess, (req, res) => {
   res.render('newBot', { orgId: req.params.orgId });
 });
 
-app.post('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) => {
+async function createBotHandler (req, res) {
   const { assistant_id, name, phone } = req.body;
   const { rows } = await pool.query(
     'INSERT INTO whatsapp_bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
@@ -656,24 +712,40 @@ app.post('/org/:orgId/bots', requireEditor, requireOrgAccess, async (req, res) =
     return res.json(rows[0]);
   }
   res.redirect(`/org/${req.params.orgId}/bots/manage`);
-});
+}
 
-app.post('/bot/:botId/start', requireEditor, requireBotAccess, async (req, res) => {
+async function startBotHandler (req, res) {
   const { rows } = await pool.query('SELECT * FROM whatsapp_bots WHERE id=$1', [req.params.botId]);
   const bot = rows[0];
   if (!bot) return res.status(404).send('Not found');
   await startBot(bot);
   res.json({ status: getBotStatus(bot.id) });
-});
+}
 
-app.post('/bot/:botId/stop', requireEditor, requireBotAccess, async (req, res) => {
+async function stopBotHandler (req, res) {
   stopBot(req.params.botId);
   res.json({ status: 'stopped' });
-});
+}
 
-app.get('/bot/:botId/status', requireEditor, requireBotAccess, async (req, res) => {
+async function botStatusHandler (req, res) {
   res.json({ status: getBotStatus(req.params.botId) });
-});
+}
+
+registerApiRoute('get', '/organizations/:orgId/bots', [requireEditor, requireOrgAccess, listBotsHandler], [
+  '/org/:orgId/bots'
+]);
+registerApiRoute('post', '/organizations/:orgId/bots', [requireEditor, requireOrgAccess, createBotHandler], [
+  '/org/:orgId/bots'
+]);
+registerApiRoute('post', '/bots/:botId/start', [requireEditor, requireBotAccess, startBotHandler], [
+  '/bot/:botId/start'
+]);
+registerApiRoute('post', '/bots/:botId/stop', [requireEditor, requireBotAccess, stopBotHandler], [
+  '/bot/:botId/stop'
+]);
+registerApiRoute('get', '/bots/:botId/status', [requireEditor, requireBotAccess, botStatusHandler], [
+  '/bot/:botId/status'
+]);
 
 app.get('/users', requireAdmin, async (req, res) => {
   const { rows } = await pool.query('SELECT id, username, role, organization_id FROM users ORDER BY id');
