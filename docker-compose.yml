@@ -48,8 +48,8 @@ services:
       redis:
         condition: service_healthy
     command: ['sh', '-c', 'npm run migrate && node src/admin.js']
-    ports:
-      - '${APP_HOST_PORT:-31371}:${APP_PORT:-3001}'
+    expose:
+      - '${APP_PORT:-3001}'
     volumes:
       - ./whatsapp-auth:/app/whatsapp-auth
     healthcheck:
@@ -81,6 +81,16 @@ services:
     command: ['sh', '-c', 'npm run migrate && node src/worker.js']
     volumes:
       - ./whatsapp-auth:/app/whatsapp-auth
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../whatsapp-bot-frontend
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - '31372:80'
     restart: unless-stopped
 
   migrate:
