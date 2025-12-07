@@ -36,6 +36,19 @@ const {
 } = require('./botManager');
 
 const sessionSecret = process.env.SESSION_SECRET;
+const apiAuthBypass = process.env.DISABLE_AUTH_FOR_API === 'true';
+
+function isApiRequest (req) {
+  return req.baseUrl?.startsWith('/api') || req.originalUrl?.startsWith('/api');
+}
+
+function isApiAuthDisabled (req) {
+  return apiAuthBypass && isApiRequest(req);
+}
+
+function jsonError (res, status, error, message) {
+  return res.status(status).json({ error, message: message || error });
+}
 
 function ensureSessionSecret () {
   if (!sessionSecret) {
@@ -62,6 +75,10 @@ app.use(expressLayouts);
 app.set('layout', 'layout');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use((req, _res, next) => {
+  req.isApiRequest = isApiRequest(req);
+  next();
+});
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use(
@@ -78,7 +95,10 @@ app.use(
 );
 
 const csrfProtection = csrf();
-app.use(csrfProtection);
+app.use((req, res, next) => {
+  if (req.isApiRequest) return next();
+  csrfProtection(req, res, next);
+});
 
 // expose alert stored in session
 app.use((req, res, next) => {
@@ -104,24 +124,33 @@ app.use((req, res, next) => {
 });
 
 function requireAdmin (req, res, next) {
-  if (req.session.role === 'admin') return next();
+  const role = req.user?.role || req.session.role;
+  if (isApiAuthDisabled(req)) return next();
+  if (role === 'admin') return next();
+  if (req.isApiRequest) return jsonError(res, 403, 'forbidden', 'Admin role required');
   res.status(403).send('Forbidden');
 }
 
 function requireEditor (req, res, next) {
-  if (req.session.role === 'admin' || req.session.role === 'editor') return next();
+  const role = req.user?.role || req.session.role;
+  if (isApiAuthDisabled(req)) return next();
+  if (role === 'admin' || role === 'editor') return next();
+  if (req.isApiRequest) return jsonError(res, 403, 'forbidden', 'Editor role required');
   res.status(403).send('Forbidden');
 }
 
 function requireOrgAccess (req, res, next) {
-  if (req.session.role === 'admin') return next();
-  const orgId = req.session.organization_id;
+  const role = req.user?.role || req.session.role;
+  if (role === 'admin') return next();
+  if (isApiAuthDisabled(req)) return next();
+  const orgId = req.user?.organization_id || req.session.organization_id;
   const target =
     req.params.id ||
     req.params.orgId ||
     req.body.organization_id ||
     req.query.organization_id;
   if (target && Number(target) !== Number(orgId)) {
+    if (req.isApiRequest) return jsonError(res, 403, 'forbidden', 'Organization access required');
     return res.status(403).send('Forbidden');
   }
   next();
@@ -170,13 +199,17 @@ function isValidEmail (email) {
 }
 
 async function requireBotAccess (req, res, next) {
-  if (req.session.role === 'admin') return next();
+  const role = req.user?.role || req.session.role;
+  if (role === 'admin') return next();
+  if (isApiAuthDisabled(req)) return next();
   try {
     const { rows } = await pool.query('SELECT organization_id FROM whatsapp_bots WHERE id=$1', [
       req.params.botId
     ]);
     const orgId = rows[0]?.organization_id;
-    if (!orgId || Number(orgId) !== Number(req.session.organization_id)) {
+    const userOrg = req.user?.organization_id || req.session.organization_id;
+    if (!orgId || Number(orgId) !== Number(userOrg)) {
+      if (req.isApiRequest) return jsonError(res, 403, 'forbidden', 'Bot access denied');
       return res.status(403).send('Forbidden');
     }
     next();
@@ -187,8 +220,33 @@ async function requireBotAccess (req, res, next) {
 
 function requireLogin (req, res, next) {
   if (req.method === 'OPTIONS') return next();
-  if (req.session.user) return next();
+  if (isApiAuthDisabled(req)) return next();
+  if (req.session.user) {
+    if (req.isApiRequest) {
+      req.user = {
+        username: req.session.user,
+        role: req.session.role,
+        organization_id: req.session.organization_id
+      };
+    }
+    return next();
+  }
+  if (req.isApiRequest) return jsonError(res, 401, 'unauthorized', 'Login required');
   res.redirect('/login');
+}
+
+function apiAuthMiddleware (req, res, next) {
+  if (!req.isApiRequest) return next();
+  if (isApiAuthDisabled(req)) return next();
+  if (req.session.user) {
+    req.user = {
+      username: req.session.user,
+      role: req.session.role,
+      organization_id: req.session.organization_id
+    };
+    return next();
+  }
+  return jsonError(res, 401, 'unauthorized', 'Login required');
 }
 
 // count all incoming requests
@@ -241,6 +299,7 @@ function corsMiddleware (req, res, next) {
 app.use(corsMiddleware);
 
 const apiRouter = express.Router();
+const apiAuthRouter = express.Router();
 // All API endpoints are now mounted under `/api` for the external frontend SPA (legacy paths remain as compatibility aliases).
 
 function registerApiRoute (method, path, handlers, legacyPaths = []) {
@@ -276,6 +335,20 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+apiAuthRouter.post('/login', (req, res) => {
+  res.status(501).json({ error: 'not_implemented', message: 'API login not yet available' });
+});
+
+apiAuthRouter.post('/logout', (req, res) => {
+  res.status(501).json({ error: 'not_implemented', message: 'API logout not yet available' });
+});
+
+apiAuthRouter.post('/refresh', (req, res) => {
+  res.status(501).json({ error: 'not_implemented', message: 'API token refresh not yet available' });
+});
+
+apiRouter.use('/auth', apiAuthRouter);
 
 async function broadcastStatus () {
   const queue = await getQueueLength();
@@ -425,10 +498,10 @@ app.get('/dashboard', (req, res) => {
   res.render('dashboard');
 });
 
-// auth middleware
-app.use(requireLogin);
+app.use('/api', apiAuthMiddleware, apiRouter);
 
-app.use('/api', apiRouter);
+// auth middleware for legacy/admin views
+app.use(requireLogin);
 
 function renderOrganizations (req, res) {
   res.render('organizations', { role: req.session.role });
@@ -625,7 +698,7 @@ app.get('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) 
 
 function wantsJson (req) {
   const accept = req.headers.accept || '';
-  return accept.includes('application/json');
+  return req.isApiRequest || accept.includes('application/json');
 }
 
 app.get('/org/:id/upload', requireEditor, requireOrgAccess, (req, res) => {
@@ -724,7 +797,7 @@ async function createBotHandler (req, res) {
     'INSERT INTO whatsapp_bots (organization_id, assistant_id, name, phone, status) VALUES ($1,$2,$3,$4,$5) RETURNING *',
     [req.params.orgId, assistant_id, name || null, phone || null, 'stopped']
   );
-  if (req.headers.accept === 'application/json') {
+  if (req.isApiRequest || req.headers.accept === 'application/json') {
     return res.json(rows[0]);
   }
   res.redirect(`/org/${req.params.orgId}/bots/manage`);
@@ -733,7 +806,10 @@ async function createBotHandler (req, res) {
 async function startBotHandler (req, res) {
   const { rows } = await pool.query('SELECT * FROM whatsapp_bots WHERE id=$1', [req.params.botId]);
   const bot = rows[0];
-  if (!bot) return res.status(404).send('Not found');
+  if (!bot) {
+    if (req.isApiRequest) return jsonError(res, 404, 'not_found', 'Bot not found');
+    return res.status(404).send('Not found');
+  }
   await startBot(bot);
   res.json({ status: getBotStatus(bot.id) });
 }
