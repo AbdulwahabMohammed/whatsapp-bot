@@ -26,6 +26,7 @@ const PDFDocument = require('pdfkit');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const expressLayouts = require('express-ejs-layouts');
+const { slugify } = require('./utils/slugify');
 const {
   startBot,
   stopBot,
@@ -59,6 +60,7 @@ app.set('views', path.join(__dirname, '../views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use(
@@ -122,6 +124,48 @@ function requireOrgAccess (req, res, next) {
     return res.status(403).send('Forbidden');
   }
   next();
+}
+
+function normalizeStatus (status) {
+  return status === 'inactive' ? 'inactive' : 'active';
+}
+
+function parsePagination (query) {
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number.parseInt(query.pageSize, 10) || 10));
+  return { page, pageSize };
+}
+
+function buildOrgFilters (req) {
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+  const search = (req.query.search || '').trim().toLowerCase();
+  const status = (req.query.status || 'all').toLowerCase();
+
+  if (req.session.role !== 'admin') {
+    conditions.push(`id=$${idx++}`);
+    params.push(req.session.organization_id);
+  }
+
+  if (search) {
+    conditions.push(`(LOWER(name) LIKE $${idx} OR LOWER(slug) LIKE $${idx})`);
+    params.push(`%${search}%`);
+    idx += 1;
+  }
+
+  if (status && status !== 'all') {
+    conditions.push(`status=$${idx++}`);
+    params.push(normalizeStatus(status));
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { where, params };
+}
+
+function isValidEmail (email) {
+  if (!email) return true;
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 }
 
 async function requireBotAccess (req, res, next) {
@@ -324,13 +368,12 @@ app.get('/dashboard', (req, res) => {
 // auth middleware
 app.use(requireLogin);
 
-app.get('/', async (req, res) => {
-  let orgs = await listOrganizations();
-  if (req.session.role !== 'admin') {
-    orgs = orgs.filter(o => o.id === req.session.organization_id);
-  }
-  res.render('list', { orgs, role: req.session.role });
-});
+function renderOrganizations (req, res) {
+  res.render('organizations', { role: req.session.role });
+}
+
+app.get('/', requireEditor, renderOrganizations);
+app.get('/organizations', requireEditor, renderOrganizations);
 
 app.get('/org/new', requireEditor, (req, res) => {
   res.render('newOrg');
@@ -347,6 +390,154 @@ app.post('/org/new', requireEditor, async (req, res) => {
     working_hours_end || null
   );
   res.redirect('/');
+});
+
+app.get('/api/organizations', requireEditor, async (req, res) => {
+  try {
+    const { page, pageSize } = parsePagination(req.query);
+    const { where, params } = buildOrgFilters(req);
+    const { rows: countRows } = await pool.query(`SELECT COUNT(*) FROM organizations ${where}`, params);
+    const total = Number(countRows[0]?.count || 0);
+    const listQuery =
+      'SELECT id, name, slug, phone, contact_email, contact_phone, status, language, created_at, updated_at, description FROM organizations ' +
+      `${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    const { rows } = await pool.query(listQuery, [...params, pageSize, (page - 1) * pageSize]);
+    res.json({ data: rows, total, page, pageSize });
+  } catch (error) {
+    logger.error('Failed to list organizations', error);
+    res.status(500).json({ error: 'Failed to list organizations' });
+  }
+});
+
+app.get('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, name, slug, phone, contact_email, contact_phone, status, language, instructions, working_hours_start, working_hours_end, description FROM organizations WHERE id=$1',
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Organization not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    logger.error(`Failed to load organization ${req.params.id}`, error);
+    res.status(500).json({ error: 'Failed to load organization' });
+  }
+});
+
+app.post('/api/organizations', requireAdmin, async (req, res) => {
+  const {
+    name,
+    slug,
+    phone,
+    instructions,
+    language,
+    status,
+    contact_email: contactEmail,
+    contact_phone: contactPhone,
+    working_hours_start: workingHoursStart,
+    working_hours_end: workingHoursEnd,
+    description
+  } = req.body;
+
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  if (!isValidEmail(contactEmail)) return res.status(400).json({ error: 'Invalid email' });
+
+  const normalizedSlug = slugify(slug || name) || `org-${Date.now()}`;
+  const normalizedStatus = normalizeStatus(status);
+
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO organizations (name, slug, phone, instructions, language, working_hours_start, working_hours_end, status, contact_email, contact_phone, description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
+      [
+        name,
+        normalizedSlug,
+        phone,
+        instructions,
+        language || 'ar',
+        workingHoursStart || null,
+        workingHoursEnd || null,
+        normalizedStatus,
+        contactEmail || null,
+        contactPhone || null,
+        description || null
+      ]
+    );
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    const isConflict = error?.code === '23505';
+    logger[isConflict ? 'warn' : 'error']('Failed to create organization', error);
+    const statusCode = isConflict ? 409 : 500;
+    const message = isConflict ? 'Organization already exists' : 'Failed to create organization';
+    res.status(statusCode).json({ error: message });
+  }
+});
+
+app.put('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, res) => {
+  const updates = [];
+  const params = [];
+  let idx = 1;
+
+  const fields = {
+    name: req.body.name,
+    slug: req.body.slug,
+    phone: req.body.phone,
+    instructions: req.body.instructions,
+    language: req.body.language,
+    working_hours_start: req.body.working_hours_start,
+    working_hours_end: req.body.working_hours_end,
+    status: req.body.status,
+    contact_email: req.body.contact_email,
+    contact_phone: req.body.contact_phone,
+    description: req.body.description
+  };
+
+  if (fields.contact_email && !isValidEmail(fields.contact_email)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== undefined) {
+      if (key === 'slug') {
+        const normalized = slugify(value || req.body.name || '');
+        updates.push(`${key}=$${idx++}`);
+        params.push(normalized || `org-${Date.now()}`);
+      } else if (key === 'status') {
+        updates.push(`${key}=$${idx++}`);
+        params.push(normalizeStatus(value));
+      } else {
+        updates.push(`${key}=$${idx++}`);
+        params.push(value || null);
+      }
+    }
+  });
+
+  updates.push(`updated_at=now()`);
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE organizations SET ${updates.join(', ')} WHERE id=$${idx} RETURNING *`,
+      [...params, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Organization not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    const isConflict = error?.code === '23505';
+    logger[isConflict ? 'warn' : 'error'](`Failed to update organization ${req.params.id}`, error);
+    res.status(isConflict ? 409 : 500).json({ error: isConflict ? 'Organization already exists' : 'Failed to update organization' });
+  }
+});
+
+app.delete('/api/organizations/:id', requireEditor, requireOrgAccess, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'UPDATE organizations SET status=$1, updated_at=now() WHERE id=$2 RETURNING *',
+      ['inactive', req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Organization not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    logger.error(`Failed to delete organization ${req.params.id}`, error);
+    res.status(500).json({ error: 'Failed to delete organization' });
+  }
 });
 
 app.post('/org/:id/assistant', requireEditor, requireOrgAccess, async (req, res) => {

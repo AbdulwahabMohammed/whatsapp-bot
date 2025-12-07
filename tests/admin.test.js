@@ -15,7 +15,15 @@ jest.mock(
 );
 
 jest.mock('../src/index', () => ({
-  createOrganization: jest.fn(async (n, p, i, l) => ({ id: 1, name: n, phone: p, instructions: i, language: l })),
+  createOrganization: jest.fn(async (n, p, i, l, s, e, slug, status) => ({
+    id: 1,
+    name: n,
+    phone: p,
+    instructions: i,
+    language: l,
+    slug,
+    status
+  })),
   listOrganizations: jest.fn(async () => ([]))
 }));
 
@@ -259,6 +267,68 @@ describe('admin routes', () => {
     const agent = request.agent(app);
     await login(agent);
     await agent.get('/').expect(200);
+  });
+
+  it('returns organizations over API', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async text => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: 'AAAA', organization_id: null }] };
+      }
+      if (text.startsWith('SELECT COUNT(*) FROM organizations')) {
+        return { rows: [{ count: '2' }] };
+      }
+      if (text.startsWith('SELECT id, name, slug')) {
+        return {
+          rows: [
+            {
+              id: 1,
+              name: 'Org',
+              slug: 'org',
+              status: 'active',
+              contact_email: null,
+              contact_phone: null,
+              phone: null,
+              language: 'ar',
+              created_at: new Date(),
+              updated_at: new Date(),
+              description: null
+            }
+          ]
+        };
+      }
+      return { rows: [] };
+    });
+    const agent = request.agent(app);
+    await login(agent);
+    const res = await agent.get('/api/organizations').set('Accept', 'application/json').expect(200);
+    expect(res.body.total).toBe(2);
+    expect(res.body.data[0].slug).toBe('org');
+  });
+
+  it('creates organization via API', async () => {
+    const hash = bcrypt.hashSync('secret', 10);
+    pool.query.mockImplementation(async (text, params) => {
+      if (text.includes('SELECT password_hash')) {
+        return { rows: [{ password_hash: hash, role: 'admin', totp_secret: 'AAAA', organization_id: null }] };
+      }
+      if (text.startsWith('INSERT INTO organizations')) {
+        return { rows: [{ id: 5, name: params[0], slug: params[1], status: params[7], contact_email: params[8] }] };
+      }
+      return { rows: [] };
+    });
+    const agent = request.agent(app);
+    await login(agent);
+    const tokenRes = await agent.get('/organizations');
+    const csrfToken = tokenRes.headers['x-csrf-token'];
+    const res = await agent
+      .post('/api/organizations')
+      .set('Accept', 'application/json')
+      .set('Content-Type', 'application/json')
+      .set('X-CSRF-Token', csrfToken)
+      .send({ name: 'API Org', slug: 'api-org', contact_email: 'team@example.com' });
+    expect(res.status).toBe(201);
+    expect(res.body.slug).toBe('api-org');
   });
 
   it('serves metrics', async () => {

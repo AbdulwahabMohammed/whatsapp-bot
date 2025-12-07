@@ -1,5 +1,6 @@
 const logger = require('./logger');
 const { checkEnv } = require('./checkEnv');
+const { slugify } = require('./utils/slugify');
 
 const envCheckPromise = checkEnv();
 let pool;
@@ -21,13 +22,31 @@ async function createOrganization (
   instructions,
   language = 'ar',
   workingHoursStart,
-  workingHoursEnd
+  workingHoursEnd,
+  slug,
+  status = 'active',
+  contactEmail,
+  contactPhone,
+  description
 ) {
   await envCheckPromise;
   const db = getPool();
+  const normalizedSlug = slugify(slug || name) || `org-${Date.now()}`;
   const { rows } = await db.query(
-    'INSERT INTO organizations (name, phone, instructions, language, working_hours_start, working_hours_end) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-    [name, phone, instructions, language, workingHoursStart, workingHoursEnd]
+    'INSERT INTO organizations (name, phone, instructions, language, working_hours_start, working_hours_end, slug, status, contact_email, contact_phone, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+    [
+      name,
+      phone,
+      instructions,
+      language,
+      workingHoursStart,
+      workingHoursEnd,
+      normalizedSlug,
+      status,
+      contactEmail,
+      contactPhone,
+      description
+    ]
   );
   return rows[0];
 }
@@ -35,7 +54,7 @@ async function createOrganization (
 async function listOrganizations () {
   await envCheckPromise;
   const db = getPool();
-  const { rows } = await db.query('SELECT * FROM organizations');
+  const { rows } = await db.query('SELECT * FROM organizations ORDER BY created_at DESC');
   return rows;
 }
 

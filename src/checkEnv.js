@@ -91,15 +91,20 @@ async function ensureWhatsAppAuthFolders (client) {
     return;
   }
 
+  const missing = [];
   for (const bot of rows) {
     const folderPath = getAuthPath(bot.id);
-    if (fs.existsSync(folderPath)) continue;
+    if (!fs.existsSync(folderPath)) {
+      missing.push(folderPath);
+    }
+  }
 
-    fs.mkdirSync(folderPath, { recursive: true });
-    const label = bot.name ? `${bot.name} (#${bot.id})` : bot.phone ? `${bot.phone} (#${bot.id})` : `bot #${bot.id}`;
-    logger.warn(
-      `Created missing WhatsApp auth directory for ${label} at ${folderPath}. Scan the QR to initialize this session.`
-    );
+  if (missing.length) {
+    const error = new Error('Missing WhatsApp auth folders');
+    error.code = 'MISSING_WHATSAPP_AUTH_FOLDERS';
+    error.details = missing;
+    logger.error('Missing WhatsApp auth folders', { missing });
+    throw error;
   }
 
   logger.info(`WhatsApp auth base directory ready at ${baseDir}.`);

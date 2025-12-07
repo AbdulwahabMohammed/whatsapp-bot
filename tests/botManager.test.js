@@ -1,7 +1,7 @@
 const EventEmitter = require('events');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
-const path = require('path');
+const { getAuthPath } = require('../src/paths');
 
 const mockSock = {
   ev: new EventEmitter(),
@@ -46,7 +46,9 @@ describe('botManager', () => {
     try { botManager.stopBot(3); } catch (e) {}
     try { botManager.stopBot(4); } catch (e) {}
     try { botManager.stopBot(5); } catch (e) {}
-    fs.rmSync(path.join(__dirname, '../auth-5'), { recursive: true, force: true });
+    for (let id = 1; id <= 5; id++) {
+      fs.rmSync(getAuthPath(id), { recursive: true, force: true });
+    }
   });
 
   test('start and stop bot', async () => {
@@ -97,7 +99,7 @@ describe('botManager', () => {
     botManager.events.on('update', e => events.push(e));
     await botManager.startBot({ id: 5, organization_id: 1, assistant_id: 'a1' });
 
-    const authPath = path.join(__dirname, '../auth-5');
+    const authPath = getAuthPath(5);
     fs.mkdirSync(authPath, { recursive: true });
 
     const { getContentType } = require('@whiskeysockets/baileys');

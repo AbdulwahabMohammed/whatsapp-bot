@@ -1,0 +1,416 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <p class="text-muted mb-1">إدارة المنظمات</p>
+    <h1 class="fw-semibold mb-0">لوحة التحكم بالمنظمات</h1>
+  </div>
+  <button class="btn btn-primary" id="openCreate">إنشاء منظمة</button>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-4 col-md-6">
+        <label class="form-label">البحث</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="اسم المنظمة أو المعرّف" autocomplete="off">
+      </div>
+      <div class="col-lg-3 col-md-4">
+        <label class="form-label">الحالة</label>
+        <select id="statusFilter" class="form-select">
+          <option value="all">الكل</option>
+          <option value="active">نشطة</option>
+          <option value="inactive">متوقفة</option>
+        </select>
+      </div>
+      <div class="col-lg-2 col-md-4">
+        <label class="form-label">عدد الصفوف</label>
+        <select id="pageSize" class="form-select">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div id="org-error" class="alert alert-danger m-3 d-none"></div>
+    <div id="org-loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-3 mb-0 text-muted">جار تحميل المنظمات...</p>
+    </div>
+    <div id="org-empty" class="text-center py-5 d-none">
+      <p class="mb-2 text-muted">لا توجد منظمات حالياً.</p>
+      <button class="btn btn-outline-primary" id="emptyCreate">إنشاء أول منظمة</button>
+    </div>
+    <div id="org-table-wrapper" class="table-responsive d-none">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">الاسم</th>
+            <th scope="col">المعرّف</th>
+            <th scope="col">البريد</th>
+            <th scope="col">الهاتف</th>
+            <th scope="col">الحالة</th>
+            <th scope="col">تم الإنشاء</th>
+            <th scope="col" class="text-end">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="org-table"></tbody>
+      </table>
+    </div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top d-none" id="org-pagination">
+      <div class="text-muted" id="org-count"></div>
+      <div class="btn-group" role="group" aria-label="Pagination">
+        <button class="btn btn-outline-secondary" id="prevPage">السابق</button>
+        <button class="btn btn-outline-secondary" id="nextPage">التالي</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="orgModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form id="orgForm" novalidate>
+        <div class="modal-header">
+          <h5 class="modal-title" id="orgModalLabel">إنشاء منظمة</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="form-error" class="alert alert-danger d-none"></div>
+          <input type="hidden" id="orgId">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">الاسم <span class="text-danger">*</span></label>
+              <input type="text" id="orgName" class="form-control" required>
+              <div class="invalid-feedback">الاسم مطلوب.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">المعرّف (Slug)</label>
+              <input type="text" id="orgSlug" class="form-control" required>
+              <div class="invalid-feedback">المعرّف مطلوب.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">البريد للتواصل</label>
+              <input type="email" id="orgEmail" class="form-control" placeholder="name@example.com">
+              <div class="invalid-feedback">يرجى إدخال بريد صحيح.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">هاتف للتواصل</label>
+              <input type="text" id="orgContactPhone" class="form-control" placeholder="05xxxxxxxx">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">هاتف WhatsApp</label>
+              <input type="text" id="orgPhone" class="form-control" placeholder="رقم واتساب للمنظمة">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الحالة</label>
+              <select id="orgStatus" class="form-select">
+                <option value="active">نشطة</option>
+                <option value="inactive">متوقفة</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">اللغة</label>
+              <input type="text" id="orgLanguage" class="form-control" placeholder="ar" value="ar">
+            </div>
+            <div class="col-12">
+              <label class="form-label">وصف</label>
+              <textarea id="orgDescription" class="form-control" rows="3" placeholder="ملاحظات أو وصف مختصر"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary" id="saveOrg">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
+    const modalEl = document.getElementById('orgModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const form = document.getElementById('orgForm');
+    const formError = document.getElementById('form-error');
+    const saveBtn = document.getElementById('saveOrg');
+    const nameInput = document.getElementById('orgName');
+    const slugInput = document.getElementById('orgSlug');
+    const emailInput = document.getElementById('orgEmail');
+    const phoneInput = document.getElementById('orgPhone');
+    const contactPhoneInput = document.getElementById('orgContactPhone');
+    const statusInput = document.getElementById('orgStatus');
+    const languageInput = document.getElementById('orgLanguage');
+    const descriptionInput = document.getElementById('orgDescription');
+    const idInput = document.getElementById('orgId');
+
+    const tableBody = document.getElementById('org-table');
+    const loading = document.getElementById('org-loading');
+    const tableWrapper = document.getElementById('org-table-wrapper');
+    const emptyState = document.getElementById('org-empty');
+    const errorBox = document.getElementById('org-error');
+    const pagination = document.getElementById('org-pagination');
+    const countLabel = document.getElementById('org-count');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const pageSizeSelect = document.getElementById('pageSize');
+
+    const state = { page: 1, pageSize: 10, search: '', status: 'all', total: 0 };
+    let slugTouched = false;
+
+    function slugifyLocal (value) {
+      return (value || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-\u0600-\u06FF\s]+/g, '-')
+        .replace(/[\s]+/g, '-')
+        .replace(/-{2,}/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    function setLoading (isLoading) {
+      loading.classList.toggle('d-none', !isLoading);
+      tableWrapper.classList.toggle('d-none', isLoading);
+      pagination.classList.toggle('d-none', isLoading);
+      emptyState.classList.add('d-none');
+      errorBox.classList.add('d-none');
+    }
+
+    function formatDate (value) {
+      if (!value) return '-';
+      const d = new Date(value);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function renderRows (rows) {
+      tableBody.innerHTML = '';
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.id}</td>
+          <td class="fw-semibold">${row.name}</td>
+          <td><span class="text-muted">${row.slug}</span></td>
+          <td>${row.contact_email || '-'}</td>
+          <td>${row.contact_phone || row.phone || '-'}</td>
+          <td>
+            <span class="badge ${row.status === 'active' ? 'bg-success' : 'bg-secondary'}">${row.status === 'active' ? 'نشطة' : 'متوقفة'}</span>
+          </td>
+          <td>${formatDate(row.created_at)}</td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-secondary" data-action="view" data-id="${row.id}">عرض</button>
+              <button class="btn btn-outline-primary" data-action="edit" data-id="${row.id}">تعديل</button>
+              <button class="btn btn-outline-danger" data-action="delete" data-id="${row.id}">حذف</button>
+            </div>
+          </td>`;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    async function loadOrganizations () {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: state.page,
+          pageSize: state.pageSize,
+          search: state.search,
+          status: state.status
+        });
+        const res = await fetch(`/api/organizations?${params.toString()}`, {
+          headers: { Accept: 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'حدث خطأ في جلب البيانات');
+
+        state.total = data.total || 0;
+        renderRows(data.data || []);
+
+        const hasRows = (data.data || []).length > 0;
+        tableWrapper.classList.toggle('d-none', !hasRows);
+        pagination.classList.toggle('d-none', !hasRows);
+        emptyState.classList.toggle('d-none', hasRows);
+        loading.classList.add('d-none');
+        const start = (state.page - 1) * state.pageSize + 1;
+        const end = Math.min(state.total, state.page * state.pageSize);
+        countLabel.textContent = hasRows ? `${start} - ${end} من ${state.total}` : '';
+        prevBtn.disabled = state.page === 1;
+        nextBtn.disabled = state.page * state.pageSize >= state.total;
+      } catch (error) {
+        loading.classList.add('d-none');
+        errorBox.textContent = error.message || 'تعذر تحميل المنظمات';
+        errorBox.classList.remove('d-none');
+        tableWrapper.classList.add('d-none');
+        pagination.classList.add('d-none');
+        emptyState.classList.add('d-none');
+      }
+    }
+
+    function openModal (title, data = {}) {
+      form.reset();
+      form.classList.remove('was-validated');
+      formError.classList.add('d-none');
+      formError.textContent = '';
+      slugTouched = false;
+      document.getElementById('orgModalLabel').textContent = title;
+      idInput.value = data.id || '';
+      nameInput.value = data.name || '';
+      slugInput.value = data.slug || slugifyLocal(data.name || '');
+      emailInput.value = data.contact_email || '';
+      phoneInput.value = data.phone || '';
+      contactPhoneInput.value = data.contact_phone || '';
+      statusInput.value = data.status || 'active';
+      languageInput.value = data.language || 'ar';
+      descriptionInput.value = data.description || '';
+      saveBtn.disabled = false;
+      modal.show();
+    }
+
+    async function handleEdit (id) {
+      try {
+        const res = await fetch(`/api/organizations/${id}`, { headers: { Accept: 'application/json' } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'تعذر تحميل البيانات');
+        openModal('تعديل منظمة', data);
+      } catch (error) {
+        alert(error.message || 'تعذر تحميل المنظمة');
+      }
+    }
+
+    async function handleDelete (id) {
+      if (!confirm('تأكيد حذف المنظمة؟ سيتم إيقافها.')) return;
+      try {
+        const res = await fetch(`/api/organizations/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrf,
+            Accept: 'application/json'
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'تعذر حذف المنظمة');
+        loadOrganizations();
+      } catch (error) {
+        alert(error.message || 'تعذر حذف المنظمة');
+      }
+    }
+
+    tableBody.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const action = btn.getAttribute('data-action');
+      if (action === 'edit' || action === 'view') handleEdit(id);
+      if (action === 'delete') handleDelete(id);
+    });
+
+    document.getElementById('openCreate').addEventListener('click', () => openModal('إنشاء منظمة'));
+    document.getElementById('emptyCreate').addEventListener('click', () => openModal('إنشاء منظمة'));
+
+    prevBtn.addEventListener('click', () => {
+      if (state.page === 1) return;
+      state.page -= 1;
+      loadOrganizations();
+    });
+    nextBtn.addEventListener('click', () => {
+      if (state.page * state.pageSize >= state.total) return;
+      state.page += 1;
+      loadOrganizations();
+    });
+
+    let searchTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadOrganizations();
+      }, 250);
+    });
+
+    statusFilter.addEventListener('change', () => {
+      state.status = statusFilter.value;
+      state.page = 1;
+      loadOrganizations();
+    });
+
+    pageSizeSelect.addEventListener('change', () => {
+      state.pageSize = Number(pageSizeSelect.value) || 10;
+      state.page = 1;
+      loadOrganizations();
+    });
+
+    nameInput.addEventListener('input', () => {
+      if (!slugTouched) {
+        slugInput.value = slugifyLocal(nameInput.value);
+      }
+    });
+
+    slugInput.addEventListener('input', () => {
+      slugTouched = true;
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      form.classList.add('was-validated');
+      formError.classList.add('d-none');
+      formError.textContent = '';
+
+      if (!form.checkValidity()) return;
+      const email = emailInput.value.trim();
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        emailInput.classList.add('is-invalid');
+        return;
+      }
+
+      saveBtn.disabled = true;
+
+      const payload = {
+        name: nameInput.value.trim(),
+        slug: slugInput.value.trim(),
+        contact_email: email || null,
+        contact_phone: contactPhoneInput.value.trim() || null,
+        phone: phoneInput.value.trim() || null,
+        status: statusInput.value,
+        language: languageInput.value.trim() || 'ar',
+        description: descriptionInput.value.trim() || null
+      };
+
+      const id = idInput.value;
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/organizations/${id}` : '/api/organizations';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrf,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'حدث خطأ أثناء الحفظ');
+        modal.hide();
+        loadOrganizations();
+      } catch (error) {
+        formError.textContent = error.message || 'حدث خطأ أثناء الحفظ';
+        formError.classList.remove('d-none');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    loadOrganizations();
+  })();
+</script>
