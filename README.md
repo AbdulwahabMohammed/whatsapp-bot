@@ -176,9 +176,8 @@
 يوفر المجلد `docs/` شروحات تفصيلية حول إعداد المشروع واستخدامه، ومنها:
 - [docs/setup.md](docs/setup.md) – خطوات الإعداد المحلي.
 - [docs/openai.md](docs/openai.md) – كيفية تهيئة عميل OpenAI وملاحظات الإصدارات.
-يوجد ملف [docs/review_notes.md](docs/review_notes.md) قد يتضمّن ملاحظات من المراجعين.
-يجب على كل مساهم تفقد هذا الملف عند بدء أي مهمة أو مراجعة،
-ثم حذف محتواه بالكامل بعد تنفيذ جميع الملاحظات.
+قد يضيف المراجعون ملفًا مؤقتًا باسم `docs/review_notes.md` لتدوين الملاحظات.
+هذا الملف لا يندرج ضمن المستودع بشكل دائم، لذا احذفه بعد تنفيذ ما ورد فيه.
 
 ## Running with Docker (mini)
 1. Copy `.env.example` to `.env` and fill required secrets (database, Redis, OpenAI, `SESSION_SECRET`).
